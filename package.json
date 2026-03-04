@@ -2,7 +2,16 @@
   "name": "gitclaw",
   "version": "0.3.0",
   "description": "A universal git-native agent powered by pi-agent-core",
+  "author": "shreyaskapale",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-gitagent/gitclaw"
+  },
+  "homepage": "https://github.com/open-gitagent/gitclaw",
+  "keywords": ["ai", "agent", "git", "cli", "sdk", "llm"],
   "type": "module",
+  "files": ["dist", "README.md"],
   "main": "./dist/exports.js",
   "types": "./dist/exports.d.ts",
   "bin": {

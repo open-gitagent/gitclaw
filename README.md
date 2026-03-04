@@ -37,48 +37,56 @@ Most agent frameworks treat configuration as code scattered across your applicat
 
 Fork an agent. Branch a personality. `git log` your agent's memory. Diff its rules. This is **agents as repos**.
 
-## Quick Start
-
-### CLI
+## Install
 
 ```bash
 npm install -g gitclaw
+```
 
-# Set your API key
+## Quick Start
+
+**Run your first agent in one line:**
+
+```bash
 export OPENAI_API_KEY="sk-..."
-# or: export ANTHROPIC_API_KEY="sk-ant-..."
-
-# Point gitclaw at any directory — it handles everything
-gitclaw --dir ~/my-project
+gitclaw --dir ~/my-project "Explain this project and suggest improvements"
 ```
 
-That's it. Gitclaw auto-scaffolds everything on first run:
-- `git init` if not already a repo
-- Creates `agent.yaml`, `SOUL.md`, `memory/MEMORY.md`
-- Commits the scaffold
-- Drops you into the REPL
+That's it. Gitclaw auto-scaffolds everything on first run — `agent.yaml`, `SOUL.md`, `memory/` — and drops you into the agent.
 
-```
-? Repository path (. for current dir): ~/my-project
-Initializing git repository...
-Created agent.yaml (model: openai:gpt-4o-mini)
-my-project v0.1.0
-Model: openai:gpt-4o-mini
-Tools: cli, read, write, memory
-→ List all files and explain the project
-```
+### Local Repo Mode
 
-Or run without `--dir` and it will ask you interactively:
+Clone a GitHub repo, run an agent on it, auto-commit and push to a session branch:
 
 ```bash
-gitclaw
+gitclaw --repo https://github.com/org/repo --pat ghp_xxx "Fix the login bug"
 ```
 
-Single-shot mode:
+Resume an existing session:
 
 ```bash
-gitclaw --dir ~/my-project -p "Create a hello world script"
+gitclaw --repo https://github.com/org/repo --pat ghp_xxx --session gitclaw/session-a1b2c3d4 "Continue"
 ```
+
+Token can come from env instead of `--pat`:
+
+```bash
+export GITHUB_TOKEN=ghp_xxx
+gitclaw --repo https://github.com/org/repo "Add unit tests"
+```
+
+### CLI Options
+
+| Flag | Short | Description |
+|---|---|---|
+| `--dir <path>` | `-d` | Agent directory (default: cwd) |
+| `--repo <url>` | `-r` | GitHub repo URL to clone and work on |
+| `--pat <token>` | | GitHub PAT (or set `GITHUB_TOKEN` / `GIT_TOKEN`) |
+| `--session <branch>` | | Resume an existing session branch |
+| `--model <provider:model>` | `-m` | Override model (e.g. `anthropic:claude-sonnet-4-5-20250929`) |
+| `--sandbox` | `-s` | Run in sandbox VM |
+| `--prompt <text>` | `-p` | Single-shot prompt (skip REPL) |
+| `--env <name>` | `-e` | Environment config |
 
 ### SDK
 
@@ -87,7 +95,7 @@ npm install gitclaw
 ```
 
 ```typescript
-import { query, tool } from "gitclaw";
+import { query } from "gitclaw";
 
 // Simple query
 for await (const msg of query({
@@ -97,6 +105,18 @@ for await (const msg of query({
 })) {
   if (msg.type === "delta") process.stdout.write(msg.content);
   if (msg.type === "assistant") console.log("\n\nDone.");
+}
+
+// Local repo mode via SDK
+for await (const msg of query({
+  prompt: "Fix the login bug",
+  model: "openai:gpt-4o-mini",
+  repo: {
+    url: "https://github.com/org/repo",
+    token: process.env.GITHUB_TOKEN!,
+  },
+})) {
+  if (msg.type === "delta") process.stdout.write(msg.content);
 }
 ```
 
@@ -209,6 +229,8 @@ for await (const msg of query({
 | `replaceBuiltinTools` | `boolean` | Skip cli/read/write/memory |
 | `allowedTools` | `string[]` | Tool name allowlist |
 | `disallowedTools` | `string[]` | Tool name denylist |
+| `repo` | `LocalRepoOptions` | Clone a GitHub repo and work on a session branch |
+| `sandbox` | `SandboxOptions \| boolean` | Run in sandbox VM (mutually exclusive with `repo`) |
 | `hooks` | `GCHooks` | Programmatic lifecycle hooks |
 | `maxTurns` | `number` | Max agent turns |
 | `abortController` | `AbortController` | Cancellation signal |
