@@ -37,5 +37,9 @@ export { createSandboxContext } from "./sandbox.js";
 export type { LocalSession } from "./session.js";
 export { initLocalSession } from "./session.js";
 
+// Voice
+export type { VoiceAdapter, VoiceAdapterConfig, VoiceServerOptions } from "./voice/adapter.js";
+export { startVoiceServer } from "./voice/server.js";
+
 // Loader (escape hatch)
 export { loadAgent } from "./loader.js";

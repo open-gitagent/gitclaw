@@ -18,6 +18,7 @@ import { join, resolve } from "path";
 import { execSync } from "child_process";
 import { initLocalSession } from "./session.js";
 import type { LocalSession } from "./session.js";
+import { startVoiceServer } from "./voice/server.js";
 
 // ANSI helpers
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -36,6 +37,7 @@ interface ParsedArgs {
 	repo?: string;
 	pat?: string;
 	session?: string;
+	voice?: boolean;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -50,6 +52,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 	let repo: string | undefined;
 	let pat: string | undefined;
 	let session: string | undefined;
+	let voice = false;
 
 	for (let i = 0; i < args.length; i++) {
 		switch (args[i]) {
@@ -89,6 +92,10 @@ function parseArgs(argv: string[]): ParsedArgs {
 			case "--session":
 				session = args[++i];
 				break;
+			case "--voice":
+			case "-v":
+				voice = true;
+				break;
 			default:
 				if (!args[i].startsWith("-")) {
 					prompt = args[i];
@@ -97,7 +104,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 		}
 	}
 
-	return { model, dir, prompt, env, sandbox, sandboxRepo, sandboxToken, repo, pat, session };
+	return { model, dir, prompt, env, sandbox, sandboxRepo, sandboxToken, repo, pat, session, voice };
 }
 
 function handleEvent(
@@ -275,7 +282,7 @@ async function ensureRepo(dir: string, model?: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-	const { model, dir: rawDir, prompt, env, sandbox: useSandbox, sandboxRepo, sandboxToken, repo, pat, session: sessionBranch } = parseArgs(process.argv);
+	const { model, dir: rawDir, prompt, env, sandbox: useSandbox, sandboxRepo, sandboxToken, repo, pat, session: sessionBranch, voice } = parseArgs(process.argv);
 
 	// If --repo is given, derive a default dir from the repo URL (skip interactive prompt)
 	let dir = rawDir;
@@ -337,6 +344,32 @@ async function main(): Promise<void> {
 		dir = await ensureRepo(dir, model);
 	} else {
 		dir = resolve(dir);
+	}
+
+	// Voice mode
+	if (voice) {
+		const apiKey = process.env.OPENAI_API_KEY;
+		if (!apiKey) {
+			console.error(red("Error: OPENAI_API_KEY is required for --voice mode"));
+			process.exit(1);
+		}
+
+		const cleanup = await startVoiceServer({
+			adapter: "openai-realtime",
+			adapterConfig: { apiKey, voice: "alloy" },
+			agentDir: dir,
+			model,
+			env,
+		});
+
+		process.on("SIGINT", async () => {
+			console.log("\nDisconnecting...");
+			await cleanup();
+			process.exit(0);
+		});
+
+		// Keep process alive
+		return;
 	}
 
 	let loaded;

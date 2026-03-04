@@ -9,9 +9,19 @@
     "url": "https://github.com/open-gitagent/gitclaw"
   },
   "homepage": "https://github.com/open-gitagent/gitclaw",
-  "keywords": ["ai", "agent", "git", "cli", "sdk", "llm"],
+  "keywords": [
+    "ai",
+    "agent",
+    "git",
+    "cli",
+    "sdk",
+    "llm"
+  ],
   "type": "module",
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "main": "./dist/exports.js",
   "types": "./dist/exports.d.ts",
   "bin": {
@@ -36,10 +46,11 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.55.4",
     "@mariozechner/pi-agent-core": "^0.55.4",
+    "@mariozechner/pi-ai": "^0.55.4",
     "@sinclair/typebox": "^0.34.41",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "ws": "^8.19.0"
   },
   "peerDependencies": {
     "gitmachine": ">=0.1.0"
@@ -52,6 +63,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.7.0"
   }
 }
