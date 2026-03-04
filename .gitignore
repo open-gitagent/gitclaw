@@ -2,3 +2,7 @@ node_modules/
 dist/
 pi-mono/
 .claude/
+.gitagent/
+*.tgz
+snake-game.html
+examples/debug-events.ts

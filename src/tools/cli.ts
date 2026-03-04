@@ -10,7 +10,8 @@ const cliSchema = Type.Object({
 const DEFAULT_TIMEOUT = 120;
 const MAX_OUTPUT = 100_000; // ~100KB max output to send to LLM
 
-export function createCliTool(cwd: string): AgentTool<typeof cliSchema> {
+export function createCliTool(cwd: string, defaultTimeout?: number): AgentTool<typeof cliSchema> {
+	const baseTimeout = defaultTimeout ?? DEFAULT_TIMEOUT;
 	return {
 		name: "cli",
 		label: "cli",
@@ -23,7 +24,7 @@ export function createCliTool(cwd: string): AgentTool<typeof cliSchema> {
 			signal?: AbortSignal,
 			onUpdate?: AgentToolUpdateCallback,
 		) => {
-			const timeoutSecs = timeout ?? DEFAULT_TIMEOUT;
+			const timeoutSecs = timeout ?? baseTimeout;
 
 			return new Promise((resolve, reject) => {
 				if (signal?.aborted) {

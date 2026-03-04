@@ -2,12 +2,18 @@
 
 import { createInterface } from "readline";
 import { Agent } from "@mariozechner/pi-agent-core";
-import type { AgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent, AgentTool } from "@mariozechner/pi-agent-core";
 import { loadAgent } from "./loader.js";
 import { createCliTool } from "./tools/cli.js";
 import { createReadTool } from "./tools/read.js";
 import { createWriteTool } from "./tools/write.js";
 import { createMemoryTool } from "./tools/memory.js";
+import { expandSkillCommand } from "./skills.js";
+import { loadHooksConfig, runHooks, wrapToolWithHooks } from "./hooks.js";
+import type { HooksConfig } from "./hooks.js";
+import { loadDeclarativeTools } from "./tool-loader.js";
+import { AuditLogger, isAuditEnabled } from "./audit.js";
+import { formatComplianceWarnings } from "./compliance.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
 
@@ -17,11 +23,12 @@ const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 
-function parseArgs(argv: string[]): { model?: string; dir: string; prompt?: string } {
+function parseArgs(argv: string[]): { model?: string; dir: string; prompt?: string; env?: string } {
 	const args = argv.slice(2);
 	let model: string | undefined;
 	let dir = process.cwd();
 	let prompt: string | undefined;
+	let env: string | undefined;
 
 	for (let i = 0; i < args.length; i++) {
 		switch (args[i]) {
@@ -37,6 +44,10 @@ function parseArgs(argv: string[]): { model?: string; dir: string; prompt?: stri
 			case "-p":
 				prompt = args[++i];
 				break;
+			case "--env":
+			case "-e":
+				env = args[++i];
+				break;
 			default:
 				if (!args[i].startsWith("-")) {
 					prompt = args[i];
@@ -45,10 +56,16 @@ function parseArgs(argv: string[]): { model?: string; dir: string; prompt?: stri
 		}
 	}
 
-	return { model, dir, prompt };
+	return { model, dir, prompt, env };
 }
 
-function handleEvent(event: AgentEvent): void {
+function handleEvent(
+	event: AgentEvent,
+	hooksConfig: HooksConfig | null,
+	agentDir: string,
+	sessionId: string,
+	auditLogger?: AuditLogger,
+): void {
 	switch (event.type) {
 		case "message_update": {
 			const e = event.assistantMessageEvent;
@@ -57,11 +74,21 @@ function handleEvent(event: AgentEvent): void {
 			}
 			break;
 		}
-		case "message_end":
+		case "message_end": {
 			process.stdout.write("\n");
+			// Fire post_response hooks (non-blocking)
+			if (hooksConfig?.hooks.post_response) {
+				runHooks(hooksConfig.hooks.post_response, agentDir, {
+					event: "post_response",
+					session_id: sessionId,
+				}).catch(() => {});
+			}
+			auditLogger?.logResponse().catch(() => {});
 			break;
+		}
 		case "tool_execution_start":
 			process.stdout.write(dim(`\n▶ ${event.toolName}(${summarizeArgs(event.args)})\n`));
+			auditLogger?.logToolUse(event.toolName, event.args || {}).catch(() => {});
 			break;
 		case "tool_execution_end": {
 			if (event.isError) {
@@ -96,41 +123,140 @@ function summarizeArgs(args: any): string {
 }
 
 async function main(): Promise<void> {
-	const { model, dir, prompt } = parseArgs(process.argv);
+	const { model, dir, prompt, env } = parseArgs(process.argv);
 
 	let loaded;
 	try {
-		loaded = await loadAgent(dir, model);
+		loaded = await loadAgent(dir, model, env);
 	} catch (err: any) {
 		console.error(red(`Error: ${err.message}`));
 		process.exit(1);
 	}
 
-	const { systemPrompt, manifest } = loaded;
+	const { systemPrompt, manifest, skills, sessionId, agentDir, gitagentDir, complianceWarnings } = loaded;
+
+	// Show compliance warnings
+	if (complianceWarnings.length > 0) {
+		const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
+		console.log(yellow("Compliance warnings:"));
+		console.log(yellow(formatComplianceWarnings(complianceWarnings)));
+	}
+
+	// Initialize audit logger
+	const auditEnabled = isAuditEnabled(manifest.compliance);
+	const auditLogger = new AuditLogger(gitagentDir, sessionId, auditEnabled);
+	if (auditEnabled) {
+		await auditLogger.logSessionStart();
+	}
+
+	// Load hooks config
+	const hooksConfig = await loadHooksConfig(agentDir);
+
+	// Run on_session_start hooks
+	if (hooksConfig?.hooks.on_session_start) {
+		try {
+			const result = await runHooks(hooksConfig.hooks.on_session_start, agentDir, {
+				event: "on_session_start",
+				session_id: sessionId,
+				agent: manifest.name,
+			});
+			if (result.action === "block") {
+				console.error(red(`Session blocked by hook: ${result.reason || "no reason given"}`));
+				process.exit(1);
+			}
+		} catch (err: any) {
+			console.error(red(`Hook error: ${err.message}`));
+		}
+	}
+
+	// Map provider to expected env var
+	const apiKeyEnvVars: Record<string, string> = {
+		anthropic: "ANTHROPIC_API_KEY",
+		openai: "OPENAI_API_KEY",
+		google: "GOOGLE_API_KEY",
+		xai: "XAI_API_KEY",
+		groq: "GROQ_API_KEY",
+		mistral: "MISTRAL_API_KEY",
+	};
+
+	const provider = loaded.model.provider;
+	const envVar = apiKeyEnvVars[provider];
+	if (envVar && !process.env[envVar]) {
+		console.error(red(`Error: ${envVar} environment variable is not set.`));
+		console.error(dim(`Set it with: export ${envVar}=your-key-here`));
+		process.exit(1);
+	}
+
+	// Build tools — built-in + declarative
+	let tools: AgentTool<any>[] = [
+		createCliTool(dir, manifest.runtime.timeout),
+		createReadTool(dir),
+		createWriteTool(dir),
+		createMemoryTool(dir),
+	];
+
+	// Load declarative tools from tools/*.yaml (Phase 2.2)
+	const declarativeTools = await loadDeclarativeTools(agentDir);
+	tools = [...tools, ...declarativeTools];
+
+	// Wrap with hooks if configured
+	if (hooksConfig) {
+		tools = tools.map((t) => wrapToolWithHooks(t, hooksConfig, agentDir, sessionId));
+	}
+
+	// Build model options from manifest constraints
+	const modelOptions: Record<string, any> = {};
+	if (manifest.model.constraints) {
+		const c = manifest.model.constraints;
+		if (c.temperature !== undefined) modelOptions.temperature = c.temperature;
+		if (c.max_tokens !== undefined) modelOptions.maxTokens = c.max_tokens;
+		if (c.top_p !== undefined) modelOptions.topP = c.top_p;
+		if (c.top_k !== undefined) modelOptions.topK = c.top_k;
+		if (c.stop_sequences !== undefined) modelOptions.stopSequences = c.stop_sequences;
+	}
 
 	const agent = new Agent({
 		initialState: {
 			systemPrompt,
 			model: loaded.model,
-			tools: [
-				createCliTool(dir),
-				createReadTool(dir),
-				createWriteTool(dir),
-				createMemoryTool(dir),
-			],
+			tools,
+			...modelOptions,
 		},
 	});
 
-	agent.subscribe(handleEvent);
+	agent.subscribe((event) => handleEvent(event, hooksConfig, agentDir, sessionId, auditLogger));
 
 	console.log(bold(`${manifest.name} v${manifest.version}`));
 	console.log(dim(`Model: ${loaded.model.provider}:${loaded.model.id}`));
-	console.log(dim(`Tools: ${manifest.tools.join(", ")}`));
-	console.log(dim('Type /memory to view memory, /quit to exit\n'));
+	const allToolNames = tools.map((t) => t.name);
+	console.log(dim(`Tools: ${allToolNames.join(", ")}`));
+	if (skills.length > 0) {
+		console.log(dim(`Skills: ${skills.map((s) => s.name).join(", ")}`));
+	}
+	if (loaded.workflows.length > 0) {
+		console.log(dim(`Workflows: ${loaded.workflows.map((w) => w.name).join(", ")}`));
+	}
+	if (loaded.subAgents.length > 0) {
+		console.log(dim(`Agents: ${loaded.subAgents.map((a) => a.name).join(", ")}`));
+	}
+	console.log(dim('Type /skills to list skills, /memory to view memory, /quit to exit\n'));
 
 	// Single-shot mode
 	if (prompt) {
-		await agent.prompt(prompt);
+		try {
+			await agent.prompt(prompt);
+		} catch (err: any) {
+			auditLogger?.logError(err.message).catch(() => {});
+			// Fire on_error hooks
+			if (hooksConfig?.hooks.on_error) {
+				runHooks(hooksConfig.hooks.on_error, agentDir, {
+					event: "on_error",
+					session_id: sessionId,
+					error: err.message,
+				}).catch(() => {});
+			}
+			throw err;
+		}
 		return;
 	}
 
@@ -167,10 +293,46 @@ async function main(): Promise<void> {
 				return;
 			}
 
+			if (trimmed === "/skills") {
+				if (skills.length === 0) {
+					console.log(dim("No skills installed."));
+				} else {
+					for (const s of skills) {
+						console.log(`  ${bold(s.name)} — ${dim(s.description)}`);
+					}
+				}
+				ask();
+				return;
+			}
+
+			// Skill expansion: /skill:name [args]
+			let promptText = trimmed;
+			if (trimmed.startsWith("/skill:")) {
+				const result = await expandSkillCommand(trimmed, skills);
+				if (result) {
+					console.log(dim(`▶ loading skill: ${result.skillName}`));
+					promptText = result.expanded;
+				} else {
+					const requested = trimmed.match(/^\/skill:([a-z0-9-]*)/)?.[1] || "?";
+					console.error(red(`Unknown skill: ${requested}`));
+					ask();
+					return;
+				}
+			}
+
 			try {
-				await agent.prompt(trimmed);
+				await agent.prompt(promptText);
 			} catch (err: any) {
 				console.error(red(`Error: ${err.message}`));
+				auditLogger?.logError(err.message).catch(() => {});
+				// Fire on_error hooks
+				if (hooksConfig?.hooks.on_error) {
+					runHooks(hooksConfig.hooks.on_error, agentDir, {
+						event: "on_error",
+						session_id: sessionId,
+						error: err.message,
+					}).catch(() => {});
+				}
 			}
 
 			ask();

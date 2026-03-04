@@ -3,15 +3,25 @@
   "version": "0.1.0",
   "description": "A universal git-native agent powered by pi-agent-core",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/exports.js",
+  "types": "./dist/exports.d.ts",
   "bin": {
     "gitclaw": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/exports.js",
+      "types": "./dist/exports.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/index.js"
+    }
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "node --test test/*.test.ts --experimental-strip-types"
   },
   "engines": {
     "node": ">=20"
