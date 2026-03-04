@@ -459,8 +459,8 @@ Audit logs are written to `.gitagent/audit.jsonl` with full tool invocation trac
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](./LICENSE).
