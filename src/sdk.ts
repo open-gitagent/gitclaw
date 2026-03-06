@@ -410,14 +410,36 @@ export function query(options: QueryOptions): Query {
 			}
 		});
 
-		// 10. Send prompt
+		// 10. Send prompt (with fallback retry on LLM-level errors)
+		const remainingFallbacks = [...loaded.fallbackModels];
+		function tryFallback(): boolean {
+			if (!agent.state.error || remainingFallbacks.length === 0) {
+				return false;
+			}
+			const next = remainingFallbacks.shift()!;
+			pushMsg({
+				type: "system",
+				subtype: "fallback",
+				content: `Model failed, falling back to ${next.provider}:${next.id}`,
+				metadata: { model: next.id, provider: next.provider },
+			});
+			agent.setModel(next);
+			agent.reset();
+			return true;
+		}
+
 		if (typeof options.prompt === "string") {
 			await agent.prompt(options.prompt);
+			while (tryFallback()) {
+				await agent.prompt(options.prompt);
+			}
 		} else {
-			// Multi-turn: iterate the async iterable
 			for await (const userMsg of options.prompt) {
 				pushMsg({ type: "user", content: userMsg.content });
 				await agent.prompt(userMsg.content);
+				while (tryFallback()) {
+					await agent.prompt(userMsg.content);
+				}
 			}
 		}
 

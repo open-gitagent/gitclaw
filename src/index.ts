@@ -4,6 +4,7 @@ import { createInterface } from "readline";
 import { Agent } from "@mariozechner/pi-agent-core";
 import type { AgentEvent, AgentTool } from "@mariozechner/pi-agent-core";
 import { loadAgent } from "./loader.js";
+import { getEnvApiKey } from "@mariozechner/pi-ai";
 import { createBuiltinTools } from "./tools/index.js";
 import { createSandboxContext } from "./sandbox.js";
 import type { SandboxContext, SandboxConfig } from "./sandbox.js";
@@ -123,7 +124,21 @@ function handleEvent(
 			break;
 		}
 		case "message_end": {
-			process.stdout.write("\n");
+			const msg = event.message as any;
+			if (msg?.role === "assistant" && msg.stopReason === "error") {
+				const errorText = msg.errorMessage || "LLM request failed (unknown error)";
+				process.stdout.write(red(`\nError: ${errorText}`) + "\n");
+				auditLogger?.logError(errorText).catch(() => {});
+				if (hooksConfig?.hooks.on_error) {
+					runHooks(hooksConfig.hooks.on_error, agentDir, {
+						event: "on_error",
+						session_id: sessionId,
+						error: errorText,
+					}).catch(() => {});
+				}
+			} else {
+				process.stdout.write("\n");
+			}
 			// Fire post_response hooks (non-blocking)
 			if (hooksConfig?.hooks.post_response) {
 				runHooks(hooksConfig.hooks.post_response, agentDir, {
@@ -416,21 +431,14 @@ async function main(): Promise<void> {
 		}
 	}
 
-	// Map provider to expected env var
-	const apiKeyEnvVars: Record<string, string> = {
-		anthropic: "ANTHROPIC_API_KEY",
-		openai: "OPENAI_API_KEY",
-		google: "GOOGLE_API_KEY",
-		xai: "XAI_API_KEY",
-		groq: "GROQ_API_KEY",
-		mistral: "MISTRAL_API_KEY",
-	};
-
+	// Validate API credentials using pi-ai's provider-aware detection.
+	// Supports all providers: OpenAI, Anthropic, Bedrock, Vertex, Groq, etc.
 	const provider = loaded.model.provider;
-	const envVar = apiKeyEnvVars[provider];
-	if (envVar && !process.env[envVar]) {
-		console.error(red(`Error: ${envVar} environment variable is not set.`));
-		console.error(dim(`Set it with: export ${envVar}=your-key-here`));
+	const apiKey = getEnvApiKey(provider);
+	if (!apiKey) {
+		console.error(red(`Error: No API credentials found for provider "${provider}".`));
+		console.error(dim(`Set the appropriate environment variable for your provider.`));
+		console.error(dim(`Examples: OPENAI_API_KEY, ANTHROPIC_API_KEY, AWS_PROFILE, etc.`));
 		process.exit(1);
 	}
 
@@ -472,8 +480,29 @@ async function main(): Promise<void> {
 
 	agent.subscribe((event) => handleEvent(event, hooksConfig, agentDir, sessionId, auditLogger));
 
+	// Track remaining fallback models for automatic retry
+	const remainingFallbacks = [...loaded.fallbackModels];
+
+	/**
+	 * Try falling back to the next model if the current one returned an error.
+	 * Returns true if a fallback was activated (caller should retry the prompt).
+	 */
+	function tryFallback(): boolean {
+		if (!agent.state.error || remainingFallbacks.length === 0) {
+			return false;
+		}
+		const next = remainingFallbacks.shift()!;
+		console.log(dim(`Model failed, falling back to ${next.provider}:${next.id}...`));
+		agent.setModel(next);
+		agent.reset();
+		return true;
+	}
+
 	console.log(bold(`${manifest.name} v${manifest.version}`));
 	console.log(dim(`Model: ${loaded.model.provider}:${loaded.model.id}`));
+	if (remainingFallbacks.length > 0) {
+		console.log(dim(`Fallbacks: ${remainingFallbacks.map((m) => `${m.provider}:${m.id}`).join(", ")}`));
+	}
 	const allToolNames = tools.map((t) => t.name);
 	console.log(dim(`Tools: ${allToolNames.join(", ")}`));
 	if (skills.length > 0) {
@@ -491,6 +520,10 @@ async function main(): Promise<void> {
 	if (prompt) {
 		try {
 			await agent.prompt(prompt);
+			// Retry with fallback models on LLM-level error
+			while (tryFallback()) {
+				await agent.prompt(prompt);
+			}
 		} catch (err: any) {
 			auditLogger?.logError(err.message).catch(() => {});
 			// Fire on_error hooks
@@ -582,6 +615,10 @@ async function main(): Promise<void> {
 
 			try {
 				await agent.prompt(promptText);
+				// Retry with fallback models on LLM-level error
+				while (tryFallback()) {
+					await agent.prompt(promptText);
+				}
 			} catch (err: any) {
 				console.error(red(`Error: ${err.message}`));
 				auditLogger?.logError(err.message).catch(() => {});
