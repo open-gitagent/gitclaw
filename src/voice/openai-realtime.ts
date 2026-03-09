@@ -119,6 +119,33 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 		this.onMessage?.(msg);
 	}
 
+	/**
+	 * Inject the latest video frame as a conversation item so the model
+	 * can see it when generating the next response (e.g. after a voice turn).
+	 */
+	private injectVideoFrame(): void {
+		if (!this.latestVideoFrame) return;
+
+		const frame = this.latestVideoFrame;
+		this.latestVideoFrame = null;
+
+		console.log(dim("[voice] Injecting video frame into conversation"));
+		this.sendRaw({
+			type: "conversation.item.create",
+			item: {
+				type: "message",
+				role: "user",
+				content: [{
+					type: "input_image",
+					image: {
+						data: frame.frame,
+						mime_type: frame.mimeType,
+					},
+				}],
+			},
+		});
+	}
+
 	private sendSessionUpdate(): void {
 		const instructions = this.config.instructions ||
 			"You are a voice interface for GitClaw, a powerful AI agent with access to the terminal, file system, and git. " +
@@ -169,6 +196,12 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 
 			case "session.updated":
 				console.log(dim("[voice] Session configured"));
+				break;
+
+			case "input_audio_buffer.speech_stopped":
+				// VAD detected end of speech — inject latest video frame before
+				// OpenAI auto-creates the response, so the model can "see" it.
+				this.injectVideoFrame();
 				break;
 
 			case "conversation.item.input_audio_transcription.completed":
