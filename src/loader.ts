@@ -106,6 +106,7 @@ export interface LoadedAgent {
 	systemPrompt: string;
 	manifest: AgentManifest;
 	model: Model<any>;
+	fallbackModels: Model<any>[];
 	skills: SkillMetadata[];
 	knowledge: LoadedKnowledge;
 	workflows: WorkflowMetadata[];
@@ -306,10 +307,27 @@ export async function loadAgent(
 	const { provider, modelId } = parseModelString(modelStr);
 	const model = getModel(provider as any, modelId as any);
 
+	// Parse fallback models (skip any that don't resolve)
+	const fallbackModels: Model<any>[] = [];
+	if (manifest.model.fallback?.length) {
+		for (const fb of manifest.model.fallback) {
+			try {
+				const { provider: fbProvider, modelId: fbModelId } = parseModelString(fb);
+				const fbModel = getModel(fbProvider as any, fbModelId as any);
+				if (fbModel) {
+					fallbackModels.push(fbModel);
+				}
+			} catch {
+				// Skip unparseable fallback entries
+			}
+		}
+	}
+
 	return {
 		systemPrompt,
 		manifest,
 		model,
+		fallbackModels,
 		skills,
 		knowledge,
 		workflows,
