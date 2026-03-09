@@ -7,6 +7,8 @@ import { join, dirname, resolve, relative } from "path";
 import { fileURLToPath } from "url";
 import { OpenAIRealtimeAdapter } from "./openai-realtime.js";
 import { GeminiLiveAdapter } from "./gemini-live.js";
+import { ComposioAdapter } from "../composio/index.js";
+import type { GCToolDefinition } from "../sdk-types.js";
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -45,11 +47,17 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 
 	// Tool handler: runs gitclaw query and collects response text
 	const toolHandler = async (prompt: string): Promise<string> => {
+		let composioTools: GCToolDefinition[] = [];
+		if (composioAdapter) {
+			try { composioTools = await composioAdapter.getTools(); } catch { /* non-fatal */ }
+		}
+
 		const result = query({
 			prompt,
 			dir: opts.agentDir,
 			model: opts.model,
 			env: opts.env,
+			...(composioTools.length ? { tools: composioTools } : {}),
 		});
 
 		let text = "";
@@ -79,6 +87,16 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 	// ── File API helpers ────────────────────────────────────────────────
 	const HIDDEN_DIRS = new Set([".git", "node_modules", ".gitagent", "dist", ".next", "__pycache__", ".venv"]);
 	const agentRoot = resolve(opts.agentDir);
+
+	// ── Composio integration (optional) ────────────────────────────────
+	let composioAdapter: ComposioAdapter | null = null;
+	if (process.env.COMPOSIO_API_KEY) {
+		composioAdapter = new ComposioAdapter({
+			apiKey: process.env.COMPOSIO_API_KEY,
+			userId: process.env.COMPOSIO_USER_ID || "default",
+		});
+		console.log(dim("[voice] Composio integration enabled"));
+	}
 
 	/** Resolve and validate a requested path stays within agentDir */
 	function safePath(reqPath: string): string | null {
@@ -148,7 +166,7 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 	// HTTP server
 	const httpServer: Server = createServer(async (req, res) => {
 		res.setHeader("Access-Control-Allow-Origin", "*");
-		res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+		res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
 		res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
 		if (req.method === "OPTIONS") {
@@ -206,6 +224,48 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 				jsonReply(res, 200, { ok: true, path: parsed.path });
 			} catch (err: any) {
 				jsonReply(res, 500, { error: err.message });
+			}
+
+		// ── Composio API routes ─────────────────────────────────────────
+		} else if (url.pathname === "/api/composio/toolkits" && req.method === "GET") {
+			if (!composioAdapter) return jsonReply(res, 501, { error: "Composio not configured" });
+			try {
+				const toolkits = await composioAdapter.getToolkits();
+				jsonReply(res, 200, toolkits);
+			} catch (err: any) {
+				jsonReply(res, 502, { error: err.message });
+			}
+
+		} else if (url.pathname === "/api/composio/connect" && req.method === "POST") {
+			if (!composioAdapter) return jsonReply(res, 501, { error: "Composio not configured" });
+			const body = await readBody(req);
+			let parsed: { toolkit: string; redirectUrl?: string };
+			try { parsed = JSON.parse(body); } catch { return jsonReply(res, 400, { error: "Invalid JSON" }); }
+			if (!parsed.toolkit) return jsonReply(res, 400, { error: "Missing toolkit" });
+			try {
+				const result = await composioAdapter.connect(parsed.toolkit, parsed.redirectUrl);
+				jsonReply(res, 200, result);
+			} catch (err: any) {
+				jsonReply(res, 502, { error: err.message });
+			}
+
+		} else if (url.pathname === "/api/composio/connections" && req.method === "GET") {
+			if (!composioAdapter) return jsonReply(res, 501, { error: "Composio not configured" });
+			try {
+				const connections = await composioAdapter.getConnections();
+				jsonReply(res, 200, connections);
+			} catch (err: any) {
+				jsonReply(res, 502, { error: err.message });
+			}
+
+		} else if (url.pathname.match(/^\/api\/composio\/connections\/[^/]+$/) && req.method === "DELETE") {
+			if (!composioAdapter) return jsonReply(res, 501, { error: "Composio not configured" });
+			const connId = url.pathname.split("/").pop()!;
+			try {
+				await composioAdapter.disconnect(connId);
+				jsonReply(res, 200, { ok: true });
+			} catch (err: any) {
+				jsonReply(res, 502, { error: err.message });
 			}
 
 		} else {

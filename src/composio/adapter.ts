@@ -1,0 +1,88 @@
+// Converts Composio tools into GCToolDefinition[] for injection into query()
+
+import type { GCToolDefinition } from "../sdk-types.js";
+import { ComposioClient, type ComposioToolkit, type ComposioConnection, type ComposioTool } from "./client.js";
+
+interface ComposioAdapterOptions {
+	apiKey: string;
+	userId?: string;
+}
+
+export class ComposioAdapter {
+	private client: ComposioClient;
+	private userId: string;
+	private cachedTools: GCToolDefinition[] | null = null;
+	private cacheExpiry = 0;
+	private static CACHE_TTL = 30_000; // 30s
+
+	constructor(opts: ComposioAdapterOptions) {
+		this.client = new ComposioClient(opts.apiKey);
+		this.userId = opts.userId ?? "default";
+	}
+
+	// Core — returns tools for injection into query()
+	async getTools(): Promise<GCToolDefinition[]> {
+		const now = Date.now();
+		if (this.cachedTools && now < this.cacheExpiry) return this.cachedTools;
+
+		const connections = await this.client.listConnections(this.userId);
+		if (connections.length === 0) return [];
+
+		// Deduplicate toolkit slugs
+		const slugs = [...new Set(connections.map((c) => c.toolkitSlug))];
+
+		// Fetch tools for each connected toolkit in parallel
+		const toolsBySlug = await Promise.all(
+			slugs.map((slug) => this.client.listTools(slug).catch(() => [] as ComposioTool[])),
+		);
+
+		const tools: GCToolDefinition[] = [];
+		for (const toolGroup of toolsBySlug) {
+			for (const t of toolGroup) {
+				tools.push(this.toGCTool(t));
+			}
+		}
+
+		this.cachedTools = tools;
+		this.cacheExpiry = now + ComposioAdapter.CACHE_TTL;
+		return tools;
+	}
+
+	// Management endpoints — proxied for server routes
+
+	async getToolkits(): Promise<ComposioToolkit[]> {
+		return this.client.listToolkits(this.userId);
+	}
+
+	async connect(
+		toolkit: string,
+		redirectUrl?: string,
+	): Promise<{ connectionId: string; redirectUrl: string }> {
+		return this.client.initiateConnection(toolkit, this.userId, redirectUrl);
+	}
+
+	async getConnections(): Promise<ComposioConnection[]> {
+		return this.client.listConnections(this.userId);
+	}
+
+	async disconnect(connectionId: string): Promise<void> {
+		await this.client.deleteConnection(connectionId);
+		// Invalidate cache so tools refresh on next query
+		this.cachedTools = null;
+	}
+
+	// ── Private ────────────────────────────────────────────────────────
+
+	private toGCTool(t: ComposioTool): GCToolDefinition {
+		const safeName = `composio_${t.toolkitSlug}_${t.name}`.replace(/[^a-zA-Z0-9_]/g, "_");
+		return {
+			name: safeName,
+			description: `[Composio/${t.toolkitSlug}] ${t.description}`,
+			inputSchema: t.parameters,
+			handler: async (args: any) => {
+				const result = await this.client.executeTool(t.name, this.userId, args);
+				return typeof result === "string" ? result : JSON.stringify(result);
+			},
+		};
+	}
+}

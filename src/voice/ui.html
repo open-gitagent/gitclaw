@@ -188,6 +188,58 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(139,148,158,0.2); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(139,148,158,0.4); }
+  /* INTEGRATIONS VIEW */
+  .integrations-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  .integrations-view.hidden { display: none; }
+  .integrations-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid #21262d;
+  }
+  .integrations-header h2 { font-size: 15px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; color: #e6edf3; }
+  .integrations-header button {
+    background: #161b22; border: 1px solid #21262d; border-radius: 6px; color: #8b949e;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 6px 14px; cursor: pointer;
+  }
+  .integrations-header button:hover { border-color: #30363d; color: #b1bac4; }
+  .integrations-grid {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;
+    align-content: start;
+  }
+  .integrations-empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #484f58; gap: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace;
+  }
+  .toolkit-card {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s;
+  }
+  .toolkit-card:hover { border-color: #30363d; }
+  .toolkit-card .tk-top { display: flex; align-items: center; gap: 10px; }
+  .toolkit-card .tk-logo {
+    width: 36px; height: 36px; border-radius: 8px; object-fit: contain; background: #0d1117;
+    flex-shrink: 0;
+  }
+  .toolkit-card .tk-logo-placeholder {
+    width: 36px; height: 36px; border-radius: 8px; background: #21262d;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; color: #484f58;
+    flex-shrink: 0;
+  }
+  .toolkit-card .tk-name { font-size: 13px; font-weight: 600; color: #e6edf3; }
+  .toolkit-card .tk-desc {
+    font-size: 11px; color: #8b949e; line-height: 1.5;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .toolkit-card .tk-actions { margin-top: auto; }
+  .tk-btn {
+    width: 100%; padding: 8px; border-radius: 6px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .tk-btn.connect { background: #238636; color: #fff; }
+  .tk-btn.connect:hover { background: #2ea043; }
+  .tk-btn.connected { background: rgba(63,185,80,0.12); color: #3fb950; border: 1px solid #23612c; }
+  .tk-btn.connected:hover { background: rgba(248,81,73,0.12); color: #f85149; border-color: #da3633; }
+
   @keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 700px) {
     .chat-view { flex-direction: column; }
@@ -205,6 +257,7 @@
     <div class="view-tabs">
       <button class="view-tab active" id="tabChat" onclick="switchView('chat')">Chat</button>
       <button class="view-tab" id="tabFiles" onclick="switchView('files')">Files</button>
+      <button class="view-tab" id="tabIntegrations" onclick="switchView('integrations')">Integrations</button>
     </div>
   </div>
   <div class="header-right">
@@ -267,11 +320,20 @@
       </div>
     </div>
   </div>
+  <div class="integrations-view hidden" id="integrationsView">
+    <div class="integrations-header">
+      <h2>Integrations</h2>
+      <button onclick="loadToolkits()">Refresh</button>
+    </div>
+    <div class="integrations-grid" id="integrationsGrid">
+      <div class="integrations-empty" id="integrationsEmpty">Loading...</div>
+    </div>
+  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script>
-let currentView='chat',filesLoaded=false;
-function switchView(v){currentView=v;document.getElementById('chatView').classList.toggle('hidden',v!=='chat');document.getElementById('filesView').classList.toggle('hidden',v!=='files');document.getElementById('tabChat').classList.toggle('active',v==='chat');document.getElementById('tabFiles').classList.toggle('active',v==='files');if(v==='files'&&!filesLoaded){loadFileTree();filesLoaded=true;}if(v==='files'&&monacoEditor)monacoEditor.layout();}
+let currentView='chat',filesLoaded=false,integrationsLoaded=false;
+function switchView(v){currentView=v;document.getElementById('chatView').classList.toggle('hidden',v!=='chat');document.getElementById('filesView').classList.toggle('hidden',v!=='files');document.getElementById('integrationsView').classList.toggle('hidden',v!=='integrations');document.getElementById('tabChat').classList.toggle('active',v==='chat');document.getElementById('tabFiles').classList.toggle('active',v==='files');document.getElementById('tabIntegrations').classList.toggle('active',v==='integrations');if(v==='files'&&!filesLoaded){loadFileTree();filesLoaded=true;}if(v==='files'&&monacoEditor)monacoEditor.layout();if(v==='integrations'&&!integrationsLoaded){loadToolkits();integrationsLoaded=true;}}
 
 let monacoEditor=null,monacoReady=false;
 require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'}});
@@ -331,6 +393,65 @@ function stopCamera(){cameraActive=false;cameraBtn.classList.remove('active');if
 
 function sendText(){var t=textInput.value.trim();if(!t)return;connectWS();appendConv('<span class="label">You: </span>'+escHtml(t),'user');sendMsg({type:'text',text:t});textInput.value='';}
 textInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendText();}});
+
+// INTEGRATIONS
+var toolkitConnections={};
+async function loadToolkits(){
+  var grid=document.getElementById('integrationsGrid');
+  var empty=document.getElementById('integrationsEmpty');
+  grid.innerHTML='';grid.appendChild(empty);empty.textContent='Loading...';
+  try{
+    var tr=await fetch('/api/composio/toolkits');
+    if(tr.status===501){empty.textContent='Composio not configured. Set COMPOSIO_API_KEY to enable integrations.';return;}
+    var toolkits=await tr.json();
+    if(toolkits.error){empty.textContent=toolkits.error;return;}
+    // Also fetch connections for status
+    var cr=await fetch('/api/composio/connections');
+    var conns=cr.ok?await cr.json():[];
+    toolkitConnections={};
+    if(Array.isArray(conns))conns.forEach(function(c){toolkitConnections[c.toolkitSlug]=c.id;});
+    if(!Array.isArray(toolkits)||toolkits.length===0){empty.textContent='No toolkits available.';return;}
+    grid.innerHTML='';
+    toolkits.forEach(function(tk){
+      var isConn=tk.connected||!!toolkitConnections[tk.slug];
+      var connId=toolkitConnections[tk.slug]||'';
+      var card=document.createElement('div');card.className='toolkit-card';
+      var logoHtml=tk.logo?'<img class="tk-logo" src="'+escHtml(tk.logo)+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="tk-logo-placeholder" style="display:none">'+escHtml(tk.name.charAt(0))+'</div>':'<div class="tk-logo-placeholder">'+escHtml(tk.name.charAt(0))+'</div>';
+      var btnClass=isConn?'tk-btn connected':'tk-btn connect';
+      var btnLabel=isConn?'Connected':'Connect';
+      card.innerHTML='<div class="tk-top">'+logoHtml+'<span class="tk-name">'+escHtml(tk.name)+'</span></div><div class="tk-desc">'+escHtml(tk.description)+'</div><div class="tk-actions"><button class="'+btnClass+'" data-slug="'+escHtml(tk.slug)+'" data-conn="'+escHtml(connId)+'" onclick="toggleToolkit(this)">'+btnLabel+'</button></div>';
+      grid.appendChild(card);
+    });
+  }catch(e){empty.textContent='Failed to load integrations.';}
+}
+
+async function toggleToolkit(btn){
+  var slug=btn.dataset.slug;var connId=btn.dataset.conn;
+  if(connId){
+    // Disconnect
+    btn.textContent='Disconnecting...';btn.disabled=true;
+    try{await fetch('/api/composio/connections/'+encodeURIComponent(connId),{method:'DELETE'});
+    }catch(e){}
+    loadToolkits();
+  }else{
+    // Connect via OAuth
+    btn.textContent='Connecting...';btn.disabled=true;
+    try{
+      var r=await fetch('/api/composio/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toolkit:slug,redirectUrl:window.location.origin+'/'})});
+      var d=await r.json();
+      if(d.redirectUrl){window.open(d.redirectUrl,'composio_auth','width=600,height=700');}
+      else{loadToolkits();}
+    }catch(e){btn.textContent='Connect';btn.disabled=false;}
+  }
+}
+
+// Listen for OAuth completion from popup
+window.addEventListener('message',function(e){
+  if(e.data&&e.data.type==='composio_auth_complete'){loadToolkits();}
+});
+// Also refresh when window regains focus (in case popup completed)
+window.addEventListener('focus',function(){if(currentView==='integrations'&&integrationsLoaded)loadToolkits();});
+
 connectWS();
 </script>
 </body>
