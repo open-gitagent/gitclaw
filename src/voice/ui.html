@@ -39,8 +39,8 @@
   /* CHAT VIEW */
   .chat-view { display: flex; flex: 1; overflow: hidden; }
   .chat-view.hidden { display: none; }
-  .panel-left {
-    width: 320px; min-width: 320px; border-right: 1px solid #21262d;
+  .panel-cam {
+    width: 280px; min-width: 280px; border-left: 1px solid #21262d;
     display: flex; flex-direction: column; padding: 16px; gap: 14px; background: #0e1117;
   }
   .camera-container {
@@ -191,7 +191,7 @@
   @keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 700px) {
     .chat-view { flex-direction: column; }
-    .panel-left { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #21262d; }
+    .panel-cam { width: 100%; min-width: 0; border-left: none; border-bottom: 1px solid #21262d; }
     .camera-container { aspect-ratio: 16/9; }
     .activity-bar { display: none; }
     .file-sidebar { width: 100%; min-width: 0; max-height: 40vh; border-right: none; border-bottom: 1px solid #21262d; }
@@ -214,7 +214,14 @@
 </div>
 <div class="main">
   <div class="chat-view" id="chatView">
-    <div class="panel-left">
+    <div class="panel-right">
+      <div class="conversation" id="conversation"></div>
+      <div class="input-bar">
+        <input type="text" id="textInput" placeholder="Type a message..." autocomplete="off" />
+        <button onclick="sendText()">Send</button>
+      </div>
+    </div>
+    <div class="panel-cam">
       <div class="camera-container">
         <div class="camera-off" id="cameraOff">Camera off</div>
         <video id="cameraVideo" autoplay playsinline muted style="display:none;"></video>
@@ -229,13 +236,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
           Mic
         </button>
-      </div>
-    </div>
-    <div class="panel-right">
-      <div class="conversation" id="conversation"></div>
-      <div class="input-bar">
-        <input type="text" id="textInput" placeholder="Type a message..." autocomplete="off" />
-        <button onclick="sendText()">Send</button>
       </div>
     </div>
   </div>
