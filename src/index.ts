@@ -37,7 +37,7 @@ interface ParsedArgs {
 	repo?: string;
 	pat?: string;
 	session?: string;
-	voice?: boolean;
+	voice?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -52,7 +52,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 	let repo: string | undefined;
 	let pat: string | undefined;
 	let session: string | undefined;
-	let voice = false;
+	let voice: string | undefined;
 
 	for (let i = 0; i < args.length; i++) {
 		switch (args[i]) {
@@ -94,7 +94,12 @@ function parseArgs(argv: string[]): ParsedArgs {
 				break;
 			case "--voice":
 			case "-v":
-				voice = true;
+				// Accept optional backend name: --voice, --voice openai, --voice gemini
+				if (args[i + 1] && !args[i + 1].startsWith("-")) {
+					voice = args[++i];
+				} else {
+					voice = "openai";
+				}
 				break;
 			default:
 				if (!args[i].startsWith("-")) {
@@ -348,15 +353,28 @@ async function main(): Promise<void> {
 
 	// Voice mode
 	if (voice) {
-		const apiKey = process.env.OPENAI_API_KEY;
-		if (!apiKey) {
-			console.error(red("Error: OPENAI_API_KEY is required for --voice mode"));
-			process.exit(1);
+		let adapterBackend: "openai-realtime" | "gemini-live";
+		let apiKey: string | undefined;
+
+		if (voice === "gemini") {
+			adapterBackend = "gemini-live";
+			apiKey = process.env.GEMINI_API_KEY;
+			if (!apiKey) {
+				console.error(red("Error: GEMINI_API_KEY is required for --voice gemini"));
+				process.exit(1);
+			}
+		} else {
+			adapterBackend = "openai-realtime";
+			apiKey = process.env.OPENAI_API_KEY;
+			if (!apiKey) {
+				console.error(red("Error: OPENAI_API_KEY is required for --voice mode"));
+				process.exit(1);
+			}
 		}
 
 		const cleanup = await startVoiceServer({
-			adapter: "openai-realtime",
-			adapterConfig: { apiKey, voice: "alloy" },
+			adapter: adapterBackend,
+			adapterConfig: { apiKey },
 			agentDir: dir,
 			model,
 			env,

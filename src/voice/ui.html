@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitClaw Multimodal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a; color: #e4e4e4;
+    font-family: 'IBM Plex Mono', monospace;
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; border-bottom: 1px solid #1a1a1a;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-left h1 { font-size: 18px; font-weight: 600; }
+  .header-left h1 span { color: #22c55e; }
+  .header-left .badge {
+    font-size: 10px; color: #555; background: #111; border: 1px solid #222;
+    border-radius: 4px; padding: 2px 8px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #333; display: inline-block;
+  }
+  .status-dot.connected { background: #22c55e; }
+  .status-dot.error { background: #ef4444; }
+  .status-text { font-size: 11px; color: #555; margin-left: 8px; }
+
+  /* Main area */
+  .main {
+    display: flex; flex: 1; overflow: hidden;
+  }
+
+  /* Left panel: camera + controls */
+  .panel-left {
+    width: 340px; min-width: 340px;
+    border-right: 1px solid #1a1a1a;
+    display: flex; flex-direction: column;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .camera-container {
+    position: relative; background: #111; border: 1px solid #1a1a1a;
+    border-radius: 8px; overflow: hidden; aspect-ratio: 4/3;
+  }
+  .camera-container video {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block;
+  }
+  .camera-container .camera-off {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    color: #333; font-size: 12px;
+  }
+  .camera-container canvas { display: none; }
+
+  .controls {
+    display: flex; gap: 12px;
+  }
+  .ctrl-btn {
+    flex: 1; padding: 12px; border-radius: 8px;
+    background: #111; border: 1px solid #222;
+    color: #777; font-family: inherit; font-size: 12px;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ctrl-btn:hover { border-color: #333; color: #aaa; }
+  .ctrl-btn.active { border-color: #22c55e; color: #22c55e; background: #22c55e10; }
+  .ctrl-btn.active:hover { border-color: #22c55e; }
+  .ctrl-btn svg { width: 16px; height: 16px; }
+
+  /* Right panel: conversation + input */
+  .panel-right {
+    flex: 1; display: flex; flex-direction: column;
+    min-width: 0;
+  }
+
+  .conversation {
+    flex: 1; overflow-y: auto; padding: 20px;
+    font-size: 12px; line-height: 1.8;
+  }
+  .conversation:empty::before {
+    content: "Conversation will appear here...";
+    color: #333;
+  }
+  .conv-msg { margin-bottom: 4px; }
+  .conv-msg.user { color: #999; }
+  .conv-msg.user .label { color: #22c55e; font-weight: 600; }
+  .conv-msg.assistant { color: #e4e4e4; }
+  .conv-msg.assistant .label { color: #22c55e; font-weight: 600; }
+  .conv-msg.tool { color: #f97316; }
+  .conv-msg.tool::before { content: ""; }
+  .conv-msg.system { color: #555; font-style: italic; }
+  .conv-msg.frame { color: #444; font-size: 11px; }
+
+  /* Text input */
+  .input-bar {
+    display: flex; padding: 16px 20px;
+    border-top: 1px solid #1a1a1a; gap: 8px;
+  }
+  .input-bar input {
+    flex: 1; background: #111; border: 1px solid #222;
+    border-radius: 6px; padding: 10px 14px;
+    color: #e4e4e4; font-family: inherit; font-size: 13px;
+    outline: none;
+  }
+  .input-bar input:focus { border-color: #333; }
+  .input-bar input::placeholder { color: #444; }
+  .input-bar button {
+    background: #22c55e; border: none; border-radius: 6px;
+    color: #0a0a0a; font-family: inherit; font-size: 13px;
+    font-weight: 600; padding: 10px 16px; cursor: pointer;
+  }
+  .input-bar button:hover { background: #16a34a; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .main { flex-direction: column; }
+    .panel-left { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #1a1a1a; }
+    .camera-container { aspect-ratio: 16/9; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Git<span>Claw</span></h1>
+    <span class="badge">multimodal</span>
+  </div>
+  <div style="display:flex;align-items:center;">
+    <span class="status-dot" id="statusDot"></span>
+    <span class="status-text" id="statusText">Disconnected</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="panel-left">
+    <div class="camera-container" id="cameraBox">
+      <div class="camera-off" id="cameraOff">Camera off</div>
+      <video id="cameraVideo" autoplay playsinline muted style="display:none;"></video>
+      <canvas id="cameraCanvas"></canvas>
+    </div>
+    <div class="controls">
+      <button class="ctrl-btn" id="cameraBtn" onclick="toggleCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11"/>
+          <rect x="2" y="6" width="14" height="12" rx="2"/>
+        </svg>
+        Camera
+      </button>
+      <button class="ctrl-btn" id="micBtn" onclick="toggleMic()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+        Mic
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="conversation" id="conversation"></div>
+    <div class="input-bar">
+      <input type="text" id="textInput" placeholder="Type a message..." autocomplete="off" />
+      <button onclick="sendText()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────
+let ws = null;
+let audioCtx = null;
+let micStream = null;
+let micProcessor = null;
+let micActive = false;
+let cameraStream = null;
+let cameraActive = false;
+let cameraInterval = null;
+
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const micBtn = document.getElementById('micBtn');
+const cameraBtn = document.getElementById('cameraBtn');
+const cameraVideo = document.getElementById('cameraVideo');
+const cameraOff = document.getElementById('cameraOff');
+const cameraCanvas = document.getElementById('cameraCanvas');
+const conv = document.getElementById('conversation');
+const textInput = document.getElementById('textInput');
+
+// ─── Status ───────────────────────────────────────────
+function setStatus(text, state) {
+  statusText.textContent = text;
+  statusDot.className = 'status-dot ' + (state || '');
+}
+
+// ─── Conversation log ─────────────────────────────────
+function appendConv(html, cls) {
+  const div = document.createElement('div');
+  div.className = 'conv-msg ' + (cls || '');
+  div.innerHTML = html;
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+}
+
+// ─── WebSocket ────────────────────────────────────────
+function connectWS() {
+  if (ws) return;
+  setStatus('Connecting...', '');
+
+  ws = new WebSocket('ws://' + window.location.host);
+
+  ws.onopen = () => {
+    setStatus('Connected', 'connected');
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      handleServerMessage(msg);
+    } catch {}
+  };
+
+  ws.onerror = () => setStatus('Connection error', 'error');
+
+  ws.onclose = () => {
+    ws = null;
+    setStatus('Disconnected', '');
+    stopMic();
+    stopCamera();
+  };
+}
+
+function sendMsg(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+// ─── Handle server messages ───────────────────────────
+let assistantText = '';
+
+function handleServerMessage(msg) {
+  switch (msg.type) {
+    case 'audio_delta':
+      playAudioDelta(msg.audio);
+      break;
+
+    case 'transcript':
+      if (msg.role === 'user' && !msg.partial) {
+        appendConv('<span class="label">You: </span>' + escHtml(msg.text), 'user');
+      } else if (msg.role === 'assistant') {
+        if (msg.partial) {
+          assistantText += msg.text;
+        } else {
+          // Final transcript
+          if (assistantText) {
+            appendConv('<span class="label">Assistant: </span>' + escHtml(assistantText), 'assistant');
+            assistantText = '';
+          } else {
+            appendConv('<span class="label">Assistant: </span>' + escHtml(msg.text), 'assistant');
+          }
+        }
+      }
+      break;
+
+    case 'agent_working':
+      appendConv('Running: ' + escHtml(msg.query), 'tool');
+      setStatus('Agent working...', 'connected');
+      break;
+
+    case 'agent_done':
+      setStatus('Connected', 'connected');
+      break;
+
+    case 'error':
+      appendConv('Error: ' + escHtml(msg.message), 'system');
+      break;
+  }
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ─── Audio playback ───────────────────────────────────
+let audioQueue = [];
+let isPlaying = false;
+let currentSource = null;
+let nextPlayTime = 0;
+
+function playAudioDelta(base64) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const int16 = new Int16Array(bytes.buffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+
+  const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+  buffer.getChannelData(0).set(float32);
+  audioQueue.push(buffer);
+  if (!isPlaying) playNext();
+}
+
+function playNext() {
+  if (audioQueue.length === 0) { isPlaying = false; return; }
+  isPlaying = true;
+  const buffer = audioQueue.shift();
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  const startTime = Math.max(now, nextPlayTime);
+  source.start(startTime);
+  nextPlayTime = startTime + buffer.duration;
+  source.onended = () => {
+    if (audioQueue.length > 0) playNext();
+    else isPlaying = false;
+  };
+  currentSource = source;
+}
+
+// ─── Microphone ───────────────────────────────────────
+async function toggleMic() {
+  if (micActive) {
+    stopMic();
+  } else {
+    await startMic();
+  }
+}
+
+async function startMic() {
+  connectWS();
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    appendConv('Microphone access denied', 'system');
+    return;
+  }
+
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+  const source = audioCtx.createMediaStreamSource(micStream);
+  micProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+  source.connect(micProcessor);
+  micProcessor.connect(audioCtx.destination);
+
+  micProcessor.onaudioprocess = (e) => {
+    if (!micActive || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const input = e.inputBuffer.getChannelData(0);
+    const int16 = new Int16Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      int16[i] = Math.max(-32768, Math.min(32767, Math.floor(input[i] * 32768)));
+    }
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(int16.buffer)));
+    sendMsg({ type: 'audio', audio: base64 });
+  };
+
+  micActive = true;
+  micBtn.classList.add('active');
+}
+
+function stopMic() {
+  micActive = false;
+  micBtn.classList.remove('active');
+  if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+// ─── Camera ───────────────────────────────────────────
+async function toggleCamera() {
+  if (cameraActive) {
+    stopCamera();
+  } else {
+    await startCamera();
+  }
+}
+
+async function startCamera() {
+  connectWS();
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+  } catch {
+    appendConv('Camera access denied', 'system');
+    return;
+  }
+
+  cameraVideo.srcObject = cameraStream;
+  cameraVideo.style.display = 'block';
+  cameraOff.style.display = 'none';
+
+  cameraCanvas.width = 640;
+  cameraCanvas.height = 480;
+  const ctx = cameraCanvas.getContext('2d');
+
+  // Capture a JPEG frame every 1s
+  cameraInterval = setInterval(() => {
+    if (!cameraActive || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ctx.drawImage(cameraVideo, 0, 0, 640, 480);
+    const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.7);
+    const base64 = dataUrl.split(',')[1];
+    sendMsg({ type: 'video_frame', frame: base64, mimeType: 'image/jpeg' });
+  }, 1000);
+
+  cameraActive = true;
+  cameraBtn.classList.add('active');
+}
+
+function stopCamera() {
+  cameraActive = false;
+  cameraBtn.classList.remove('active');
+  if (cameraInterval) { clearInterval(cameraInterval); cameraInterval = null; }
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  cameraVideo.style.display = 'none';
+  cameraOff.style.display = '';
+}
+
+// ─── Text input ───────────────────────────────────────
+function sendText() {
+  const text = textInput.value.trim();
+  if (!text) return;
+
+  connectWS();
+  appendConv('<span class="label">You: </span>' + escHtml(text), 'user');
+  sendMsg({ type: 'text', text });
+  textInput.value = '';
+}
+
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendText();
+  }
+});
+
+// Auto-connect on load
+connectWS();
+</script>
+</body>
+</html>
