@@ -26,7 +26,7 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 		this.onMessage = opts.onMessage;
 		this.toolHandler = opts.toolHandler;
 
-		const model = this.config.model || "gpt-4o-realtime-preview";
+		const model = this.config.model || "gpt-realtime";
 		const url = `wss://api.openai.com/v1/realtime?model=${model}`;
 
 		return new Promise((resolve, reject) => {
@@ -84,10 +84,7 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 				if (this.latestVideoFrame) {
 					content.push({
 						type: "input_image",
-						image: {
-							data: this.latestVideoFrame.frame,
-							mime_type: this.latestVideoFrame.mimeType,
-						},
+						image_url: `data:${this.latestVideoFrame.mimeType};base64,${this.latestVideoFrame.frame}`,
 					});
 					this.latestVideoFrame = null;
 				}
@@ -137,10 +134,7 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 				role: "user",
 				content: [{
 					type: "input_image",
-					image: {
-						data: frame.frame,
-						mime_type: frame.mimeType,
-					},
+					image_url: `data:${frame.mimeType};base64,${frame.frame}`,
 				}],
 			},
 		});
