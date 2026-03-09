@@ -13,8 +13,6 @@
     display: flex; flex-direction: column;
     min-height: 100vh; overflow: hidden;
   }
-
-  /* ─── Header ─── */
   .header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 20px; height: 40px; min-height: 40px;
@@ -28,8 +26,6 @@
   .status-dot.connected { background: #3fb950; }
   .status-dot.error { background: #f85149; }
   .status-text { font-size: 11px; color: #8b949e; margin-left: 6px; }
-
-  /* ─── View tabs ─── */
   .view-tabs { display: flex; gap: 2px; }
   .view-tab {
     font-family: inherit; font-size: 11px; padding: 4px 14px;
@@ -38,20 +34,14 @@
   }
   .view-tab:hover { color: #b1bac4; background: #161b22; }
   .view-tab.active { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,0.08); }
-
-  /* ─── Main area ─── */
   .main { display: flex; flex: 1; overflow: hidden; }
 
-  /* ═══ CHAT VIEW ═══ */
+  /* CHAT VIEW */
   .chat-view { display: flex; flex: 1; overflow: hidden; }
   .chat-view.hidden { display: none; }
-
   .panel-left {
-    width: 320px; min-width: 320px;
-    border-right: 1px solid #21262d;
-    display: flex; flex-direction: column;
-    padding: 16px; gap: 14px;
-    background: #0e1117;
+    width: 320px; min-width: 320px; border-right: 1px solid #21262d;
+    display: flex; flex-direction: column; padding: 16px; gap: 14px; background: #0e1117;
   }
   .camera-container {
     position: relative; background: #161b22; border: 1px solid #21262d;
@@ -59,14 +49,12 @@
   }
   .camera-container video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .camera-container .camera-off {
-    position: absolute; inset: 0; display: flex;
-    align-items: center; justify-content: center; color: #484f58; font-size: 12px;
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #484f58; font-size: 12px;
   }
   .camera-container canvas { display: none; }
   .controls { display: flex; gap: 8px; }
   .ctrl-btn {
-    flex: 1; padding: 10px; border-radius: 6px;
-    background: #161b22; border: 1px solid #21262d;
+    flex: 1; padding: 10px; border-radius: 6px; background: #161b22; border: 1px solid #21262d;
     color: #8b949e; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
     cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -74,11 +62,10 @@
   .ctrl-btn:hover { border-color: #30363d; color: #b1bac4; }
   .ctrl-btn.active { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,0.08); }
   .ctrl-btn svg { width: 14px; height: 14px; }
-
   .panel-right { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #0d1117; }
   .conversation {
-    flex: 1; overflow-y: auto; padding: 16px 20px;
-    font-size: 12px; line-height: 1.8; font-family: 'IBM Plex Mono', monospace;
+    flex: 1; overflow-y: auto; padding: 16px 20px; font-size: 12px; line-height: 1.8;
+    font-family: 'IBM Plex Mono', monospace;
   }
   .conversation:empty::before { content: "Conversation will appear here..."; color: #484f58; }
   .conv-msg { margin-bottom: 3px; animation: fade-in 0.2s ease-out; }
@@ -88,39 +75,29 @@
   .conv-msg.assistant .label { color: #3fb950; font-weight: 600; }
   .conv-msg.tool { color: #d29922; }
   .conv-msg.system { color: #8b949e; font-style: italic; }
-
-  .input-bar {
-    display: flex; padding: 12px 16px; border-top: 1px solid #21262d; gap: 8px;
-  }
+  .input-bar { display: flex; padding: 12px 16px; border-top: 1px solid #21262d; gap: 8px; }
   .input-bar input {
     flex: 1; background: #161b22; border: 1px solid #21262d; border-radius: 6px;
-    padding: 10px 14px; color: #e6edf3; font-family: 'IBM Plex Mono', monospace;
-    font-size: 13px; outline: none;
+    padding: 10px 14px; color: #e6edf3; font-family: 'IBM Plex Mono', monospace; font-size: 13px; outline: none;
   }
   .input-bar input:focus { border-color: #58a6ff; }
   .input-bar input::placeholder { color: #484f58; }
   .input-bar button {
-    background: #238636; border: none; border-radius: 6px;
-    color: #fff; font-family: 'Inter', sans-serif; font-size: 13px;
-    font-weight: 600; padding: 10px 18px; cursor: pointer;
+    background: #238636; border: none; border-radius: 6px; color: #fff;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 18px; cursor: pointer;
   }
   .input-bar button:hover { background: #2ea043; }
 
-  /* ═══ FILES VIEW ═══ */
+  /* FILES VIEW */
   .files-view { display: flex; flex: 1; overflow: hidden; }
   .files-view.hidden { display: none; }
-
-  /* Activity bar */
   .activity-bar {
-    width: 48px; min-width: 48px; background: #0a0d12;
-    border-right: 1px solid #21262d;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 8px 0; gap: 4px;
+    width: 48px; min-width: 48px; background: #0a0d12; border-right: 1px solid #21262d;
+    display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
   }
   .activity-btn {
-    width: 36px; height: 36px; border-radius: 6px; border: none;
-    background: transparent; color: #8b949e; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 6px; border: none; background: transparent;
+    color: #8b949e; cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; position: relative;
   }
   .activity-btn:hover { color: #e6edf3; background: #161b22; }
@@ -130,40 +107,31 @@
     width: 2px; background: #58a6ff; border-radius: 0 2px 2px 0;
   }
   .activity-btn svg { width: 20px; height: 20px; }
-
-  /* File sidebar */
   .file-sidebar {
-    width: 260px; min-width: 260px; background: #0e1117;
-    border-right: 1px solid #21262d;
+    width: 260px; min-width: 260px; background: #0e1117; border-right: 1px solid #21262d;
     display: flex; flex-direction: column; overflow: hidden;
   }
   .file-sidebar-header {
     padding: 10px 16px; font-size: 11px; color: #8b949e; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.5px;
-    display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid #21262d;
+    display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #21262d;
   }
   .file-sidebar-header button {
     background: none; border: none; color: #8b949e; cursor: pointer;
     font-size: 11px; padding: 2px 6px; border-radius: 3px; font-family: inherit;
   }
   .file-sidebar-header button:hover { color: #58a6ff; background: rgba(88,166,255,0.08); }
-
   .file-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
   .ft-item {
-    display: flex; align-items: center; gap: 4px;
-    padding: 3px 8px; font-size: 13px; cursor: pointer;
-    color: #b1bac4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    transition: background 0.1s;
-    font-family: 'IBM Plex Mono', monospace;
+    display: flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 13px;
+    cursor: pointer; color: #b1bac4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: background 0.1s; font-family: 'IBM Plex Mono', monospace;
   }
   .ft-item:hover { background: #161b22; }
   .ft-item.active { background: rgba(88,166,255,0.12); color: #e6edf3; }
   .ft-item .ft-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  .ft-item .ft-chevron { width: 14px; height: 14px; flex-shrink: 0; color: #8b949e; display: flex; align-items: center; justify-content: center; font-size: 8px; }
+  .ft-item .ft-chevron { width: 14px; height: 14px; flex-shrink: 0; color: #8b949e; display: flex; align-items: center; justify-content: center; }
   .ft-item .ft-name { overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
-
-  /* File icon colors */
   .ft-icon.folder { color: #d29922; }
   .ft-icon.ts { color: #58a6ff; }
   .ft-icon.js { color: #f0db4f; }
@@ -175,45 +143,29 @@
   .ft-icon.py { color: #3572A5; }
   .ft-icon.sh { color: #89e051; }
   .ft-icon.default { color: #6e7681; }
-
-  .ft-children { }
   .ft-group.collapsed > .ft-children { display: none; }
-
-  /* Editor area */
   .editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #0d1117; }
-
-  /* Editor tabs */
   .editor-tabs {
-    display: flex; background: #0a0d12; border-bottom: 1px solid #21262d;
-    overflow-x: auto; min-height: 35px;
+    display: flex; background: #0a0d12; border-bottom: 1px solid #21262d; overflow-x: auto; min-height: 35px;
   }
   .editor-tabs:empty { display: none; }
   .ed-tab {
-    display: flex; align-items: center; gap: 6px; padding: 0 14px;
-    font-size: 12px; font-family: 'IBM Plex Mono', monospace;
-    cursor: pointer; border-right: 1px solid #21262d;
-    color: #8b949e; background: #0a0d12; flex-shrink: 0;
-    transition: all 0.1s; position: relative;
-    height: 35px;
+    display: flex; align-items: center; gap: 6px; padding: 0 14px; font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace; cursor: pointer; border-right: 1px solid #21262d;
+    color: #8b949e; background: #0a0d12; flex-shrink: 0; transition: all 0.1s; height: 35px;
   }
   .ed-tab:hover { color: #b1bac4; }
-  .ed-tab.active {
-    background: #0d1117; color: #e6edf3;
-    border-top: 2px solid #58a6ff;
-  }
+  .ed-tab.active { background: #0d1117; color: #e6edf3; border-top: 2px solid #58a6ff; }
   .ed-tab:not(.active) { border-top: 2px solid transparent; }
   .ed-tab .tab-icon { width: 14px; height: 14px; flex-shrink: 0; display: flex; align-items: center; }
   .ed-tab .tab-modified { width: 6px; height: 6px; border-radius: 50%; background: #58a6ff; flex-shrink: 0; }
   .ed-tab .tab-close {
-    width: 18px; height: 18px; border: none; background: transparent;
-    color: #8b949e; cursor: pointer; border-radius: 3px;
-    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border: none; background: transparent; color: #8b949e;
+    cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center;
     opacity: 0; transition: opacity 0.1s; font-size: 14px; margin-left: 4px;
   }
   .ed-tab:hover .tab-close { opacity: 1; }
   .ed-tab .tab-close:hover { background: #21262d; color: #e6edf3; }
-
-  /* Monaco container */
   .editor-container { flex: 1; overflow: hidden; }
   .editor-empty {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -224,32 +176,19 @@
   .editor-empty .shortcuts { display: flex; gap: 20px; font-size: 11px; color: #6e7681; margin-top: 4px; }
   .editor-empty .shortcuts kbd {
     background: #161b22; padding: 2px 6px; border-radius: 3px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 10px; border: 1px solid #21262d;
-    margin-right: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; border: 1px solid #21262d; margin-right: 4px;
   }
-
-  /* Status bar */
   .status-bar {
-    height: 24px; min-height: 24px; background: #1a3a5c;
-    border-top: 1px solid #21262d;
-    display: flex; align-items: center; padding: 0 12px;
-    font-size: 11px; color: #8b949e; gap: 16px;
+    height: 24px; min-height: 24px; background: #1a3a5c; border-top: 1px solid #21262d;
+    display: flex; align-items: center; padding: 0 12px; font-size: 11px; color: #8b949e; gap: 16px;
     font-family: 'IBM Plex Mono', monospace;
   }
-  .status-bar .sb-item { display: flex; align-items: center; gap: 4px; }
   .status-bar .sb-right { margin-left: auto; display: flex; gap: 16px; }
-
-  /* ─── Scrollbar ─── */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(139,148,158,0.2); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(139,148,158,0.4); }
-
-  @keyframes fade-in {
-    from { opacity: 0; transform: translateY(3px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 700px) {
     .chat-view { flex-direction: column; }
     .panel-left { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #21262d; }
@@ -260,7 +199,6 @@
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="header-left">
     <h1>Git<span>Claw</span></h1>
@@ -274,9 +212,7 @@
     <span class="status-text" id="statusText">Disconnected</span>
   </div>
 </div>
-
 <div class="main">
-  <!-- ═══ Chat View ═══ -->
   <div class="chat-view" id="chatView">
     <div class="panel-left">
       <div class="camera-container">
@@ -286,18 +222,11 @@
       </div>
       <div class="controls">
         <button class="ctrl-btn" id="cameraBtn" onclick="toggleCamera()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11"/>
-            <rect x="2" y="6" width="14" height="12" rx="2"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
           Camera
         </button>
         <button class="ctrl-btn" id="micBtn" onclick="toggleMic()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" x2="12" y1="19" y2="22"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
           Mic
         </button>
       </div>
@@ -310,553 +239,98 @@
       </div>
     </div>
   </div>
-
-  <!-- ═══ Files View ═══ -->
   <div class="files-view hidden" id="filesView">
-    <!-- Activity Bar -->
     <div class="activity-bar">
       <button class="activity-btn active" title="Explorer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
       </button>
-      <button class="activity-btn" title="Search" onclick="alert('Search coming soon')">
+      <button class="activity-btn" title="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       </button>
     </div>
-
-    <!-- File Sidebar -->
     <div class="file-sidebar">
-      <div class="file-sidebar-header">
-        <span>Explorer</span>
-        <button onclick="loadFileTree()">Refresh</button>
-      </div>
-      <div class="file-tree" id="fileTree">
-        <div style="padding:16px;color:#484f58;font-size:12px;">Loading...</div>
-      </div>
+      <div class="file-sidebar-header"><span>Explorer</span><button onclick="loadFileTree()">Refresh</button></div>
+      <div class="file-tree" id="fileTree"><div style="padding:16px;color:#484f58;font-size:12px;">Loading...</div></div>
     </div>
-
-    <!-- Editor Area -->
     <div class="editor-area">
       <div class="editor-tabs" id="editorTabs"></div>
       <div class="editor-container" id="editorContainer">
         <div class="editor-empty" id="editorEmpty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           <p>Select a file to start editing</p>
-          <div class="shortcuts">
-            <span><kbd>Cmd+S</kbd> Save</span>
-            <span><kbd>Cmd+W</kbd> Close tab</span>
-          </div>
+          <div class="shortcuts"><span><kbd>Cmd+S</kbd> Save</span><span><kbd>Cmd+W</kbd> Close tab</span></div>
         </div>
       </div>
-      <div class="status-bar" id="statusBar">
-        <div class="sb-item" id="sbBranch"></div>
-        <div class="sb-right">
-          <div class="sb-item" id="sbLang"></div>
-          <div class="sb-item" id="sbEncoding">UTF-8</div>
-        </div>
+      <div class="status-bar">
+        <div id="sbBranch"></div>
+        <div class="sb-right"><div id="sbLang"></div><div>UTF-8</div></div>
       </div>
     </div>
   </div>
 </div>
-
-<!-- Monaco Editor CDN -->
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
-
 <script>
-// ═══════════════════════════════════════════════════════
-//  VIEW SWITCHING
-// ═══════════════════════════════════════════════════════
-let currentView = 'chat';
-let filesLoaded = false;
+let currentView='chat',filesLoaded=false;
+function switchView(v){currentView=v;document.getElementById('chatView').classList.toggle('hidden',v!=='chat');document.getElementById('filesView').classList.toggle('hidden',v!=='files');document.getElementById('tabChat').classList.toggle('active',v==='chat');document.getElementById('tabFiles').classList.toggle('active',v==='files');if(v==='files'&&!filesLoaded){loadFileTree();filesLoaded=true;}if(v==='files'&&monacoEditor)monacoEditor.layout();}
 
-function switchView(view) {
-  currentView = view;
-  document.getElementById('chatView').classList.toggle('hidden', view !== 'chat');
-  document.getElementById('filesView').classList.toggle('hidden', view !== 'files');
-  document.getElementById('tabChat').classList.toggle('active', view === 'chat');
-  document.getElementById('tabFiles').classList.toggle('active', view === 'files');
-  if (view === 'files' && !filesLoaded) { loadFileTree(); filesLoaded = true; }
-  if (view === 'files' && monacoEditor) monacoEditor.layout();
-}
+let monacoEditor=null,monacoReady=false;
+require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'}});
+require(['vs/editor/editor.main'],function(){monacoReady=true;monaco.editor.defineTheme('gitclaw-dark',{base:'vs-dark',inherit:true,rules:[],colors:{'editor.background':'#0d1117','editor.lineHighlightBackground':'#161b2280','editorLineNumber.foreground':'#484f58','editorLineNumber.activeForeground':'#8b949e','editor.selectionBackground':'#58a6ff30','editorCursor.foreground':'#58a6ff','editorWidget.background':'#161b22','editorWidget.border':'#21262d','minimap.background':'#0d1117'}});});
 
-// ═══════════════════════════════════════════════════════
-//  MONACO EDITOR SETUP
-// ═══════════════════════════════════════════════════════
-let monacoEditor = null;
-let monacoReady = false;
+function getLanguage(f){var e=f.split('.').pop().toLowerCase(),m={ts:'typescript',tsx:'typescript',js:'javascript',jsx:'javascript',json:'json',html:'html',css:'css',scss:'scss',less:'less',md:'markdown',py:'python',sh:'shell',bash:'shell',yaml:'yaml',yml:'yaml',xml:'xml',sql:'sql',rs:'rust',go:'go',java:'java',c:'c',cpp:'cpp',h:'c',rb:'ruby',php:'php',swift:'swift',kt:'kotlin',toml:'ini',env:'ini',gitignore:'ini'};return m[e]||'plaintext';}
 
-require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-require(['vs/editor/editor.main'], function () {
-  monacoReady = true;
-  // Define custom dark theme matching the workbench
-  monaco.editor.defineTheme('gitclaw-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [],
-    colors: {
-      'editor.background': '#0d1117',
-      'editor.lineHighlightBackground': '#161b2280',
-      'editorLineNumber.foreground': '#484f58',
-      'editorLineNumber.activeForeground': '#8b949e',
-      'editor.selectionBackground': '#58a6ff30',
-      'editorCursor.foreground': '#58a6ff',
-      'editorWidget.background': '#161b22',
-      'editorWidget.border': '#21262d',
-      'minimap.background': '#0d1117',
-    },
-  });
-});
+function ensureMonacoEditor(){if(monacoEditor||!monacoReady)return;var c=document.getElementById('editorContainer');document.getElementById('editorEmpty').style.display='none';var d=document.createElement('div');d.id='monacoMount';d.style.cssText='width:100%;height:100%;';c.appendChild(d);monacoEditor=monaco.editor.create(d,{value:'',language:'plaintext',theme:'gitclaw-dark',fontSize:13,fontFamily:"'JetBrains Mono','IBM Plex Mono','Fira Code',monospace",fontLigatures:true,minimap:{enabled:true,scale:1},lineNumbers:'on',renderLineHighlight:'all',scrollBeyondLastLine:false,padding:{top:8},bracketPairColorization:{enabled:true},smoothScrolling:true,cursorBlinking:'smooth',cursorSmoothCaretAnimation:'on',wordWrap:'on',tabSize:2,automaticLayout:true});monacoEditor.onDidChangeModelContent(function(){if(activeTabPath&&openTabs[activeTabPath]){openTabs[activeTabPath].modified=true;renderTabs();}});}
 
-function getLanguage(filename) {
-  const ext = filename.split('.').pop().toLowerCase();
-  const map = {
-    ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
-    json: 'json', html: 'html', css: 'css', scss: 'scss', less: 'less',
-    md: 'markdown', py: 'python', sh: 'shell', bash: 'shell',
-    yaml: 'yaml', yml: 'yaml', xml: 'xml', sql: 'sql',
-    rs: 'rust', go: 'go', java: 'java', c: 'c', cpp: 'cpp', h: 'c',
-    rb: 'ruby', php: 'php', swift: 'swift', kt: 'kotlin',
-    toml: 'ini', env: 'ini', gitignore: 'ini',
-  };
-  return map[ext] || 'plaintext';
-}
+var ICONS={chevronRight:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>',chevronDown:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"/></svg>',folder:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>',folderOpen:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 19h14a2 2 0 001.84-1.22L23 12H5.24a2 2 0 00-1.84 1.22L1 19h2a2 2 0 002-2V7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v1"/></svg>',file:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>',fileCode:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M10 12l-2 2 2 2"/><path d="M14 12l2 2-2 2"/></svg>'};
 
-function ensureMonacoEditor() {
-  if (monacoEditor || !monacoReady) return;
-  const container = document.getElementById('editorContainer');
-  document.getElementById('editorEmpty').style.display = 'none';
-  const div = document.createElement('div');
-  div.id = 'monacoMount';
-  div.style.cssText = 'width:100%;height:100%;';
-  container.appendChild(div);
-  monacoEditor = monaco.editor.create(div, {
-    value: '',
-    language: 'plaintext',
-    theme: 'gitclaw-dark',
-    fontSize: 13,
-    fontFamily: "'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', monospace",
-    fontLigatures: true,
-    minimap: { enabled: true, scale: 1 },
-    lineNumbers: 'on',
-    renderLineHighlight: 'all',
-    scrollBeyondLastLine: false,
-    padding: { top: 8 },
-    bracketPairColorization: { enabled: true },
-    smoothScrolling: true,
-    cursorBlinking: 'smooth',
-    cursorSmoothCaretAnimation: 'on',
-    wordWrap: 'on',
-    tabSize: 2,
-    automaticLayout: true,
-  });
-  // Track modifications
-  monacoEditor.onDidChangeModelContent(() => {
-    if (activeTabPath && openTabs[activeTabPath]) {
-      openTabs[activeTabPath].modified = true;
-      renderTabs();
-    }
-  });
-}
+function getFileIconClass(n){var e=n.split('.').pop().toLowerCase();if(['ts','tsx'].includes(e))return'ts';if(['js','jsx','mjs'].includes(e))return'js';if(e==='json')return'json';if(['css','scss','less'].includes(e))return'css';if(['html','htm'].includes(e))return'html';if(['md','txt','rst'].includes(e))return'md';if(['yaml','yml'].includes(e))return'yaml';if(e==='py')return'py';if(['sh','bash','zsh'].includes(e))return'sh';return'default';}
+function getFileIconSvg(n){var c=getFileIconClass(n);if(['ts','js','css','html','py','sh'].includes(c))return ICONS.fileCode;return ICONS.file;}
 
-// ═══════════════════════════════════════════════════════
-//  FILE BROWSER
-// ═══════════════════════════════════════════════════════
+var activeTabPath=null;
+async function loadFileTree(){var t=document.getElementById('fileTree');t.innerHTML='<div style="padding:16px;color:#484f58;font-size:12px;">Loading...</div>';try{var r=await fetch('/api/files?path=.');var d=await r.json();t.innerHTML='';renderTree(d.entries,t,0);}catch(e){t.innerHTML='<div style="padding:16px;color:#f85149;font-size:12px;">Failed to load files</div>';}}
 
-// SVG icon strings
-const ICONS = {
-  chevronRight: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>',
-  chevronDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"/></svg>',
-  folder: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>',
-  folderOpen: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 19h14a2 2 0 001.84-1.22L23 12H5.24a2 2 0 00-1.84 1.22L1 19h2a2 2 0 002-2V7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v1"/></svg>',
-  file: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>',
-  fileCode: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M10 12l-2 2 2 2"/><path d="M14 12l2 2-2 2"/></svg>',
-};
+function renderTree(entries,parent,depth){for(var i=0;i<entries.length;i++){var entry=entries[i];if(entry.type==='directory'){var group=document.createElement('div');group.className='ft-group';var item=document.createElement('div');item.className='ft-item dir';item.style.paddingLeft=(depth*12+8)+'px';item.innerHTML='<span class="ft-chevron">'+ICONS.chevronDown+'</span><span class="ft-icon folder">'+ICONS.folderOpen+'</span><span class="ft-name">'+escHtml(entry.name)+'</span>';item.onclick=(function(g,it){return function(e){e.stopPropagation();var c=g.classList.toggle('collapsed');it.querySelector('.ft-chevron').innerHTML=c?ICONS.chevronRight:ICONS.chevronDown;it.querySelector('.ft-icon').innerHTML=c?ICONS.folder:ICONS.folderOpen;};})(group,item);var ch=document.createElement('div');ch.className='ft-children';if(entry.children)renderTree(entry.children,ch,depth+1);group.appendChild(item);group.appendChild(ch);parent.appendChild(group);}else{var fi=document.createElement('div');fi.className='ft-item'+(activeTabPath===entry.path?' active':'');fi.style.paddingLeft=(depth*12+22)+'px';fi.innerHTML='<span class="ft-icon '+getFileIconClass(entry.name)+'">'+getFileIconSvg(entry.name)+'</span><span class="ft-name">'+escHtml(entry.name)+'</span>';fi.onclick=(function(p,n){return function(){openFile(p,n);};})(entry.path,entry.name);fi.dataset.path=entry.path;parent.appendChild(fi);}}}
 
-function getFileIconClass(name) {
-  const ext = name.split('.').pop().toLowerCase();
-  if (['ts','tsx'].includes(ext)) return 'ts';
-  if (['js','jsx','mjs'].includes(ext)) return 'js';
-  if (ext === 'json') return 'json';
-  if (['css','scss','less'].includes(ext)) return 'css';
-  if (['html','htm'].includes(ext)) return 'html';
-  if (['md','txt','rst'].includes(ext)) return 'md';
-  if (['yaml','yml'].includes(ext)) return 'yaml';
-  if (ext === 'py') return 'py';
-  if (['sh','bash','zsh'].includes(ext)) return 'sh';
-  return 'default';
-}
+var openTabs={};
+function renderTabs(){var t=document.getElementById('editorTabs');t.innerHTML='';for(var p in openTabs){var tab=openTabs[p];var d=document.createElement('div');d.className='ed-tab'+(p===activeTabPath?' active':'');d.innerHTML='<span class="tab-icon ft-icon '+getFileIconClass(tab.name)+'">'+getFileIconSvg(tab.name)+'</span><span>'+escHtml(tab.name)+'</span>'+(tab.modified?'<span class="tab-modified"></span>':'')+'<button class="tab-close">&times;</button>';(function(path){d.querySelector('.tab-close').onclick=function(e){e.stopPropagation();closeTab(path);};d.onclick=function(){switchTab(path);};})(p);t.appendChild(d);}}
 
-function getFileIconSvg(name) {
-  const cls = getFileIconClass(name);
-  if (['ts','js','css','html','py','sh'].includes(cls)) return ICONS.fileCode;
-  return ICONS.file;
-}
+function switchTab(p){if(!openTabs[p])return;if(activeTabPath&&openTabs[activeTabPath]&&monacoEditor)openTabs[activeTabPath].content=monacoEditor.getValue();activeTabPath=p;var tab=openTabs[p];if(monacoEditor){monaco.editor.setModelLanguage(monacoEditor.getModel(),tab.language);monacoEditor.setValue(tab.content);}document.getElementById('sbLang').textContent=tab.language;renderTabs();document.querySelectorAll('.ft-item').forEach(function(el){el.classList.toggle('active',el.dataset.path===activeTabPath);});}
 
-let activeTabPath = null;
+function closeTab(p){delete openTabs[p];var rem=Object.keys(openTabs);if(p===activeTabPath){if(rem.length>0)switchTab(rem[rem.length-1]);else{activeTabPath=null;if(monacoEditor)monacoEditor.setValue('');document.getElementById('editorEmpty').style.display='';var m=document.getElementById('monacoMount');if(m)m.style.display='none';document.getElementById('sbLang').textContent='';}}renderTabs();document.querySelectorAll('.ft-item').forEach(function(el){el.classList.toggle('active',el.dataset.path===activeTabPath);});}
 
-async function loadFileTree() {
-  const treeEl = document.getElementById('fileTree');
-  treeEl.innerHTML = '<div style="padding:16px;color:#484f58;font-size:12px;">Loading...</div>';
-  try {
-    const res = await fetch('/api/files?path=.');
-    const data = await res.json();
-    treeEl.innerHTML = '';
-    renderTree(data.entries, treeEl, 0);
-  } catch {
-    treeEl.innerHTML = '<div style="padding:16px;color:#f85149;font-size:12px;">Failed to load files</div>';
-  }
-}
+async function openFile(fp,fn){if(openTabs[fp]){switchTab(fp);return;}ensureMonacoEditor();var m=document.getElementById('monacoMount');if(m)m.style.display='';document.getElementById('editorEmpty').style.display='none';var lang=getLanguage(fn);openTabs[fp]={name:fn,content:'Loading...',modified:false,language:lang};activeTabPath=fp;renderTabs();try{var r=await fetch('/api/file?path='+encodeURIComponent(fp));var d=await r.json();openTabs[fp].content=d.error?'// Error: '+d.error:d.content;}catch(e){openTabs[fp].content='// Failed to load file';}openTabs[fp].modified=false;if(monacoEditor&&activeTabPath===fp){monaco.editor.setModelLanguage(monacoEditor.getModel(),lang);monacoEditor.setValue(openTabs[fp].content);}document.getElementById('sbLang').textContent=lang;renderTabs();document.querySelectorAll('.ft-item').forEach(function(el){el.classList.toggle('active',el.dataset.path===activeTabPath);});}
 
-function renderTree(entries, parent, depth) {
-  for (const entry of entries) {
-    if (entry.type === 'directory') {
-      const group = document.createElement('div');
-      group.className = 'ft-group';
+async function saveCurrentFile(){if(!activeTabPath||!openTabs[activeTabPath])return;if(monacoEditor)openTabs[activeTabPath].content=monacoEditor.getValue();try{var r=await fetch('/api/file',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:activeTabPath,content:openTabs[activeTabPath].content})});var d=await r.json();if(d.ok){openTabs[activeTabPath].modified=false;renderTabs();}}catch(e){}}
 
-      const item = document.createElement('div');
-      item.className = 'ft-item dir';
-      item.style.paddingLeft = (depth * 12 + 8) + 'px';
-      item.innerHTML =
-        '<span class="ft-chevron">' + ICONS.chevronDown + '</span>' +
-        '<span class="ft-icon folder">' + ICONS.folderOpen + '</span>' +
-        '<span class="ft-name">' + escHtml(entry.name) + '</span>';
-      item.onclick = (e) => {
-        e.stopPropagation();
-        const collapsed = group.classList.toggle('collapsed');
-        item.querySelector('.ft-chevron').innerHTML = collapsed ? ICONS.chevronRight : ICONS.chevronDown;
-        item.querySelector('.ft-icon').innerHTML = collapsed ? ICONS.folder : ICONS.folderOpen;
-      };
+document.addEventListener('keydown',function(e){if(currentView!=='files')return;if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCurrentFile();}if((e.ctrlKey||e.metaKey)&&e.key==='w'){e.preventDefault();if(activeTabPath)closeTab(activeTabPath);}});
 
-      const children = document.createElement('div');
-      children.className = 'ft-children';
-      if (entry.children) renderTree(entry.children, children, depth + 1);
+// CHAT / VOICE
+var ws=null,audioCtx=null,micStream=null,micProcessor=null,micActive=false,cameraStream=null,cameraActive=false,cameraInterval=null;
+var statusDot=document.getElementById('statusDot'),statusText=document.getElementById('statusText'),micBtn=document.getElementById('micBtn'),cameraBtn=document.getElementById('cameraBtn'),cameraVideo=document.getElementById('cameraVideo'),cameraOff=document.getElementById('cameraOff'),cameraCanvas=document.getElementById('cameraCanvas'),conv=document.getElementById('conversation'),textInput=document.getElementById('textInput');
 
-      group.appendChild(item);
-      group.appendChild(children);
-      parent.appendChild(group);
-    } else {
-      const item = document.createElement('div');
-      item.className = 'ft-item' + (activeTabPath === entry.path ? ' active' : '');
-      item.style.paddingLeft = (depth * 12 + 22) + 'px';
-      const iconCls = getFileIconClass(entry.name);
-      item.innerHTML =
-        '<span class="ft-icon ' + iconCls + '">' + getFileIconSvg(entry.name) + '</span>' +
-        '<span class="ft-name">' + escHtml(entry.name) + '</span>';
-      item.onclick = () => openFile(entry.path, entry.name);
-      item.dataset.path = entry.path;
-      parent.appendChild(item);
-    }
-  }
-}
+function setStatus(t,s){statusText.textContent=t;statusDot.className='status-dot '+(s||'');}
+function appendConv(h,c){var d=document.createElement('div');d.className='conv-msg '+(c||'');d.innerHTML=h;conv.appendChild(d);conv.scrollTop=conv.scrollHeight;}
+function connectWS(){if(ws)return;setStatus('Connecting...','');ws=new WebSocket('ws://'+window.location.host);ws.onopen=function(){setStatus('Connected','connected');};ws.onmessage=function(e){try{handleServerMessage(JSON.parse(e.data));}catch(x){}};ws.onerror=function(){setStatus('Connection error','error');};ws.onclose=function(){ws=null;setStatus('Disconnected','');stopMic();stopCamera();};}
+function sendMsg(m){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
 
-// ═══════════════════════════════════════════════════════
-//  EDITOR TABS
-// ═══════════════════════════════════════════════════════
-let openTabs = {}; // { path: { name, content, modified, language } }
+var assistantText='';
+function handleServerMessage(m){switch(m.type){case'audio_delta':playAudioDelta(m.audio);break;case'transcript':if(m.role==='user'&&!m.partial)appendConv('<span class="label">You: </span>'+escHtml(m.text),'user');else if(m.role==='assistant'){if(m.partial)assistantText+=m.text;else{if(assistantText){appendConv('<span class="label">Assistant: </span>'+escHtml(assistantText),'assistant');assistantText='';}else appendConv('<span class="label">Assistant: </span>'+escHtml(m.text),'assistant');}}break;case'agent_working':appendConv('Running: '+escHtml(m.query),'tool');setStatus('Agent working...','connected');break;case'agent_done':setStatus('Connected','connected');if(filesLoaded)loadFileTree();break;case'error':appendConv('Error: '+escHtml(m.message),'system');break;}}
+function escHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
-function renderTabs() {
-  const tabsEl = document.getElementById('editorTabs');
-  tabsEl.innerHTML = '';
-  const paths = Object.keys(openTabs);
-  for (const path of paths) {
-    const tab = openTabs[path];
-    const div = document.createElement('div');
-    div.className = 'ed-tab' + (path === activeTabPath ? ' active' : '');
-    const iconCls = getFileIconClass(tab.name);
-    div.innerHTML =
-      '<span class="tab-icon ft-icon ' + iconCls + '">' + getFileIconSvg(tab.name) + '</span>' +
-      '<span>' + escHtml(tab.name) + '</span>' +
-      (tab.modified ? '<span class="tab-modified"></span>' : '') +
-      '<button class="tab-close">&times;</button>';
-    div.querySelector('.tab-close').onclick = (e) => { e.stopPropagation(); closeTab(path); };
-    div.onclick = () => switchTab(path);
-    tabsEl.appendChild(div);
-  }
-}
+var audioQueue=[],isPlaying=false,currentSource=null,nextPlayTime=0;
+function playAudioDelta(b){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});var bin=atob(b),bytes=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);var i16=new Int16Array(bytes.buffer),f32=new Float32Array(i16.length);for(var i=0;i<i16.length;i++)f32[i]=i16[i]/32768;var buf=audioCtx.createBuffer(1,f32.length,24000);buf.getChannelData(0).set(f32);audioQueue.push(buf);if(!isPlaying)playNext();}
+function playNext(){if(audioQueue.length===0){isPlaying=false;return;}isPlaying=true;var buf=audioQueue.shift(),src=audioCtx.createBufferSource();src.buffer=buf;src.connect(audioCtx.destination);var now=audioCtx.currentTime,st=Math.max(now,nextPlayTime);src.start(st);nextPlayTime=st+buf.duration;src.onended=function(){if(audioQueue.length>0)playNext();else isPlaying=false;};currentSource=src;}
 
-function switchTab(path) {
-  if (!openTabs[path]) return;
-  // Save current content before switching
-  if (activeTabPath && openTabs[activeTabPath] && monacoEditor) {
-    openTabs[activeTabPath].content = monacoEditor.getValue();
-  }
-  activeTabPath = path;
-  const tab = openTabs[path];
-  if (monacoEditor) {
-    const model = monacoEditor.getModel();
-    monaco.editor.setModelLanguage(model, tab.language);
-    monacoEditor.setValue(tab.content);
-  }
-  updateStatusBar(tab);
-  renderTabs();
-  highlightActiveInTree();
-}
+async function toggleMic(){if(micActive)stopMic();else await startMic();}
+async function startMic(){connectWS();try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){appendConv('Microphone access denied','system');return;}if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});var src=audioCtx.createMediaStreamSource(micStream);micProcessor=audioCtx.createScriptProcessor(4096,1,1);src.connect(micProcessor);micProcessor.connect(audioCtx.destination);micProcessor.onaudioprocess=function(e){if(!micActive||!ws||ws.readyState!==WebSocket.OPEN)return;var inp=e.inputBuffer.getChannelData(0),i16=new Int16Array(inp.length);for(var i=0;i<inp.length;i++)i16[i]=Math.max(-32768,Math.min(32767,Math.floor(inp[i]*32768)));sendMsg({type:'audio',audio:btoa(String.fromCharCode.apply(null,new Uint8Array(i16.buffer)))});};micActive=true;micBtn.classList.add('active');}
+function stopMic(){micActive=false;micBtn.classList.remove('active');if(micProcessor){micProcessor.disconnect();micProcessor=null;}if(micStream){micStream.getTracks().forEach(function(t){t.stop();});micStream=null;}}
 
-function closeTab(path) {
-  delete openTabs[path];
-  const remaining = Object.keys(openTabs);
-  if (path === activeTabPath) {
-    if (remaining.length > 0) {
-      switchTab(remaining[remaining.length - 1]);
-    } else {
-      activeTabPath = null;
-      if (monacoEditor) monacoEditor.setValue('');
-      document.getElementById('editorEmpty').style.display = '';
-      const mount = document.getElementById('monacoMount');
-      if (mount) mount.style.display = 'none';
-      document.getElementById('sbLang').textContent = '';
-    }
-  }
-  renderTabs();
-  highlightActiveInTree();
-}
+async function toggleCamera(){if(cameraActive)stopCamera();else await startCamera();}
+async function startCamera(){connectWS();try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});}catch(e){appendConv('Camera access denied','system');return;}cameraVideo.srcObject=cameraStream;cameraVideo.style.display='block';cameraOff.style.display='none';cameraCanvas.width=640;cameraCanvas.height=480;var ctx=cameraCanvas.getContext('2d');cameraInterval=setInterval(function(){if(!cameraActive||!ws||ws.readyState!==WebSocket.OPEN)return;ctx.drawImage(cameraVideo,0,0,640,480);var u=cameraCanvas.toDataURL('image/jpeg',0.7);sendMsg({type:'video_frame',frame:u.split(',')[1],mimeType:'image/jpeg'});},1000);cameraActive=true;cameraBtn.classList.add('active');}
+function stopCamera(){cameraActive=false;cameraBtn.classList.remove('active');if(cameraInterval){clearInterval(cameraInterval);cameraInterval=null;}if(cameraStream){cameraStream.getTracks().forEach(function(t){t.stop();});cameraStream=null;}cameraVideo.style.display='none';cameraOff.style.display='';}
 
-async function openFile(filePath, fileName) {
-  // If already open, just switch to it
-  if (openTabs[filePath]) {
-    switchTab(filePath);
-    return;
-  }
-
-  ensureMonacoEditor();
-  const mount = document.getElementById('monacoMount');
-  if (mount) mount.style.display = '';
-  document.getElementById('editorEmpty').style.display = 'none';
-
-  const lang = getLanguage(fileName);
-  openTabs[filePath] = { name: fileName, content: 'Loading...', modified: false, language: lang };
-  activeTabPath = filePath;
-  renderTabs();
-
-  try {
-    const res = await fetch('/api/file?path=' + encodeURIComponent(filePath));
-    const data = await res.json();
-    if (data.error) {
-      openTabs[filePath].content = '// Error: ' + data.error;
-    } else {
-      openTabs[filePath].content = data.content;
-    }
-  } catch {
-    openTabs[filePath].content = '// Failed to load file';
-  }
-
-  openTabs[filePath].modified = false;
-  if (monacoEditor && activeTabPath === filePath) {
-    const model = monacoEditor.getModel();
-    monaco.editor.setModelLanguage(model, lang);
-    monacoEditor.setValue(openTabs[filePath].content);
-  }
-  updateStatusBar(openTabs[filePath]);
-  renderTabs();
-  highlightActiveInTree();
-}
-
-async function saveCurrentFile() {
-  if (!activeTabPath || !openTabs[activeTabPath]) return;
-  if (monacoEditor) openTabs[activeTabPath].content = monacoEditor.getValue();
-  const tab = openTabs[activeTabPath];
-  try {
-    const res = await fetch('/api/file', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: activeTabPath, content: tab.content }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      tab.modified = false;
-      renderTabs();
-    }
-  } catch {}
-}
-
-function highlightActiveInTree() {
-  document.querySelectorAll('.ft-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.path === activeTabPath);
-  });
-}
-
-function updateStatusBar(tab) {
-  document.getElementById('sbLang').textContent = tab ? tab.language : '';
-}
-
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  if (currentView !== 'files') return;
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault();
-    saveCurrentFile();
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
-    e.preventDefault();
-    if (activeTabPath) closeTab(activeTabPath);
-  }
-});
-
-// ═══════════════════════════════════════════════════════
-//  CHAT / VOICE
-// ═══════════════════════════════════════════════════════
-let ws = null;
-let audioCtx = null;
-let micStream = null;
-let micProcessor = null;
-let micActive = false;
-let cameraStream = null;
-let cameraActive = false;
-let cameraInterval = null;
-
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-const micBtn = document.getElementById('micBtn');
-const cameraBtn = document.getElementById('cameraBtn');
-const cameraVideo = document.getElementById('cameraVideo');
-const cameraOff = document.getElementById('cameraOff');
-const cameraCanvas = document.getElementById('cameraCanvas');
-const conv = document.getElementById('conversation');
-const textInput = document.getElementById('textInput');
-
-function setStatus(text, state) {
-  statusText.textContent = text;
-  statusDot.className = 'status-dot ' + (state || '');
-}
-function appendConv(html, cls) {
-  const div = document.createElement('div');
-  div.className = 'conv-msg ' + (cls || '');
-  div.innerHTML = html;
-  conv.appendChild(div);
-  conv.scrollTop = conv.scrollHeight;
-}
-
-function connectWS() {
-  if (ws) return;
-  setStatus('Connecting...', '');
-  ws = new WebSocket('ws://' + window.location.host);
-  ws.onopen = () => setStatus('Connected', 'connected');
-  ws.onmessage = (e) => { try { handleServerMessage(JSON.parse(e.data)); } catch {} };
-  ws.onerror = () => setStatus('Connection error', 'error');
-  ws.onclose = () => { ws = null; setStatus('Disconnected', ''); stopMic(); stopCamera(); };
-}
-function sendMsg(msg) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); }
-
-let assistantText = '';
-function handleServerMessage(msg) {
-  switch (msg.type) {
-    case 'audio_delta': playAudioDelta(msg.audio); break;
-    case 'transcript':
-      if (msg.role === 'user' && !msg.partial) appendConv('<span class="label">You: </span>' + escHtml(msg.text), 'user');
-      else if (msg.role === 'assistant') {
-        if (msg.partial) assistantText += msg.text;
-        else {
-          if (assistantText) { appendConv('<span class="label">Assistant: </span>' + escHtml(assistantText), 'assistant'); assistantText = ''; }
-          else appendConv('<span class="label">Assistant: </span>' + escHtml(msg.text), 'assistant');
-        }
-      }
-      break;
-    case 'agent_working':
-      appendConv('Running: ' + escHtml(msg.query), 'tool');
-      setStatus('Agent working...', 'connected');
-      break;
-    case 'agent_done':
-      setStatus('Connected', 'connected');
-      if (filesLoaded) loadFileTree();
-      break;
-    case 'error':
-      appendConv('Error: ' + escHtml(msg.message), 'system');
-      break;
-  }
-}
-function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-// Audio playback
-let audioQueue = [], isPlaying = false, currentSource = null, nextPlayTime = 0;
-function playAudioDelta(base64) {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const int16 = new Int16Array(bytes.buffer);
-  const float32 = new Float32Array(int16.length);
-  for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
-  const buffer = audioCtx.createBuffer(1, float32.length, 24000);
-  buffer.getChannelData(0).set(float32);
-  audioQueue.push(buffer);
-  if (!isPlaying) playNext();
-}
-function playNext() {
-  if (audioQueue.length === 0) { isPlaying = false; return; }
-  isPlaying = true;
-  const buffer = audioQueue.shift();
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
-  const now = audioCtx.currentTime;
-  const startTime = Math.max(now, nextPlayTime);
-  source.start(startTime);
-  nextPlayTime = startTime + buffer.duration;
-  source.onended = () => { if (audioQueue.length > 0) playNext(); else isPlaying = false; };
-  currentSource = source;
-}
-
-// Mic
-async function toggleMic() { if (micActive) stopMic(); else await startMic(); }
-async function startMic() {
-  connectWS();
-  try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-  catch { appendConv('Microphone access denied', 'system'); return; }
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-  const source = audioCtx.createMediaStreamSource(micStream);
-  micProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
-  source.connect(micProcessor);
-  micProcessor.connect(audioCtx.destination);
-  micProcessor.onaudioprocess = (e) => {
-    if (!micActive || !ws || ws.readyState !== WebSocket.OPEN) return;
-    const input = e.inputBuffer.getChannelData(0);
-    const int16 = new Int16Array(input.length);
-    for (let i = 0; i < input.length; i++) int16[i] = Math.max(-32768, Math.min(32767, Math.floor(input[i] * 32768)));
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(int16.buffer)));
-    sendMsg({ type: 'audio', audio: base64 });
-  };
-  micActive = true; micBtn.classList.add('active');
-}
-function stopMic() {
-  micActive = false; micBtn.classList.remove('active');
-  if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
-  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
-}
-
-// Camera
-async function toggleCamera() { if (cameraActive) stopCamera(); else await startCamera(); }
-async function startCamera() {
-  connectWS();
-  try { cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } }); }
-  catch { appendConv('Camera access denied', 'system'); return; }
-  cameraVideo.srcObject = cameraStream; cameraVideo.style.display = 'block'; cameraOff.style.display = 'none';
-  cameraCanvas.width = 640; cameraCanvas.height = 480;
-  const ctx = cameraCanvas.getContext('2d');
-  cameraInterval = setInterval(() => {
-    if (!cameraActive || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ctx.drawImage(cameraVideo, 0, 0, 640, 480);
-    const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.7);
-    sendMsg({ type: 'video_frame', frame: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
-  }, 1000);
-  cameraActive = true; cameraBtn.classList.add('active');
-}
-function stopCamera() {
-  cameraActive = false; cameraBtn.classList.remove('active');
-  if (cameraInterval) { clearInterval(cameraInterval); cameraInterval = null; }
-  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-  cameraVideo.style.display = 'none'; cameraOff.style.display = '';
-}
-
-// Text input
-function sendText() {
-  const text = textInput.value.trim();
-  if (!text) return;
-  connectWS();
-  appendConv('<span class="label">You: </span>' + escHtml(text), 'user');
-  sendMsg({ type: 'text', text });
-  textInput.value = '';
-}
-textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } });
-
+function sendText(){var t=textInput.value.trim();if(!t)return;connectWS();appendConv('<span class="label">You: </span>'+escHtml(t),'user');sendMsg({type:'text',text:t});textInput.value='';}
+textInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendText();}});
 connectWS();
 </script>
 </body>
