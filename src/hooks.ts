@@ -7,6 +7,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 export interface HookDefinition {
 	script: string;
 	description?: string;
+	baseDir?: string; // plugin hooks run from their own directory
 }
 
 export interface HooksConfig {
@@ -42,9 +43,13 @@ async function executeHook(
 	input: Record<string, any>,
 ): Promise<HookResult> {
 	return new Promise((resolve, reject) => {
-		const scriptPath = join(agentDir, "hooks", hook.script);
+		// Plugin hooks use baseDir; agent hooks resolve relative to hooks/ dir
+		const baseDir = hook.baseDir || agentDir;
+		const scriptPath = hook.baseDir
+			? join(baseDir, hook.script)
+			: join(agentDir, "hooks", hook.script);
 		const child = spawn("sh", [scriptPath], {
-			cwd: agentDir,
+			cwd: baseDir,
 			stdio: ["pipe", "pipe", "pipe"],
 			env: { ...process.env },
 		});

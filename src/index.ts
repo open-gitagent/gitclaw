@@ -19,6 +19,7 @@ import { execSync } from "child_process";
 import { initLocalSession } from "./session.js";
 import type { LocalSession } from "./session.js";
 import { startVoiceServer } from "./voice/server.js";
+import { handlePluginCommand } from "./plugin-cli.js";
 
 // ANSI helpers
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -282,6 +283,15 @@ async function ensureRepo(dir: string, model?: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
+	// Handle plugin subcommand: gitclaw plugin <install|list|remove|...>
+	if (process.argv[2] === "plugin") {
+		const agentDir = resolve(process.argv.includes("--dir") || process.argv.includes("-d")
+			? process.argv[process.argv.indexOf("--dir") + 1] || process.argv[process.argv.indexOf("-d") + 1] || process.cwd()
+			: process.cwd());
+		await handlePluginCommand(agentDir, process.argv.slice(3));
+		return;
+	}
+
 	const { model, dir: rawDir, prompt, env, sandbox: useSandbox, sandboxRepo, sandboxToken, repo, pat, session: sessionBranch, voice } = parseArgs(process.argv);
 
 	// If --repo is given, derive a default dir from the repo URL (skip interactive prompt)
@@ -396,8 +406,10 @@ async function main(): Promise<void> {
 		await auditLogger.logSessionStart();
 	}
 
-	// Load hooks config
-	const hooksConfig = await loadHooksConfig(agentDir);
+	// Load hooks config (agent + plugin hooks merged)
+	const { mergeHooksConfigs } = await import("./plugins.js");
+	const agentHooksConfig = await loadHooksConfig(agentDir);
+	const hooksConfig = mergeHooksConfigs(agentHooksConfig, loaded.plugins);
 
 	// Run on_session_start hooks
 	if (hooksConfig?.hooks.on_session_start) {
@@ -445,6 +457,28 @@ async function main(): Promise<void> {
 	const declarativeTools = await loadDeclarativeTools(agentDir);
 	tools = [...tools, ...declarativeTools];
 
+	// Plugin tools (declarative + programmatic)
+	for (const plugin of loaded.plugins) {
+		tools = [...tools, ...plugin.tools];
+		if (plugin.programmaticTools.length > 0) {
+			const { buildTypeboxSchema } = await import("./tool-loader.js");
+			for (const def of plugin.programmaticTools) {
+				const schema = buildTypeboxSchema(def.inputSchema);
+				tools.push({
+					name: def.name,
+					label: def.name,
+					description: def.description,
+					parameters: schema,
+					execute: async (_toolCallId: string, params: any, signal?: AbortSignal) => {
+						const result = await def.handler(params, signal);
+						const text = typeof result === "string" ? result : result.text;
+						return { content: [{ type: "text" as const, text }], details: undefined };
+					},
+				});
+			}
+		}
+	}
+
 	// Wrap with hooks if configured
 	if (hooksConfig) {
 		tools = tools.map((t) => wrapToolWithHooks(t, hooksConfig, agentDir, sessionId));
@@ -485,7 +519,10 @@ async function main(): Promise<void> {
 	if (loaded.subAgents.length > 0) {
 		console.log(dim(`Agents: ${loaded.subAgents.map((a) => a.name).join(", ")}`));
 	}
-	console.log(dim('Type /skills to list skills, /memory to view memory, /quit to exit\n'));
+	if (loaded.plugins.length > 0) {
+		console.log(dim(`Plugins: ${loaded.plugins.map((p) => p.manifest.id).join(", ")}`));
+	}
+	console.log(dim('Type /skills to list skills, /plugins to list plugins, /memory to view memory, /quit to exit\n'));
 
 	// Single-shot mode
 	if (prompt) {
@@ -559,6 +596,26 @@ async function main(): Promise<void> {
 				} else {
 					for (const s of skills) {
 						console.log(`  ${bold(s.name)} — ${dim(s.description)}`);
+					}
+				}
+				ask();
+				return;
+			}
+
+			if (trimmed === "/plugins") {
+				if (loaded.plugins.length === 0) {
+					console.log(dim("No plugins loaded."));
+				} else {
+					for (const p of loaded.plugins) {
+						const toolCount = p.tools.length + p.programmaticTools.length;
+						const info = [
+							toolCount > 0 ? `${toolCount} tools` : null,
+							p.skills.length > 0 ? `${p.skills.length} skills` : null,
+							p.hooks ? "hooks" : null,
+							p.promptAddition ? "prompt" : null,
+						].filter(Boolean).join(", ");
+						console.log(`  ${bold(p.manifest.id)} v${p.manifest.version} — ${dim(p.manifest.description)}`);
+						if (info) console.log(`    ${dim(`provides: ${info}`)}`);
 					}
 				}
 				ask();

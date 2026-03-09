@@ -10,6 +10,7 @@ import { loadHooksConfig, runHooks, wrapToolWithHooks } from "./hooks.js";
 import { loadDeclarativeTools } from "./tool-loader.js";
 import { buildTypeboxSchema } from "./tool-loader.js";
 import { wrapToolWithProgrammaticHooks } from "./sdk-hooks.js";
+import { mergeHooksConfigs } from "./plugins.js";
 import { initLocalSession } from "./session.js";
 import type { LocalSession } from "./session.js";
 import type {
@@ -186,6 +187,14 @@ export function query(options: QueryOptions): Query {
 		const declarativeTools = await loadDeclarativeTools(loaded.agentDir);
 		tools = [...tools, ...declarativeTools];
 
+		// Plugin tools (declarative + programmatic)
+		for (const plugin of loaded.plugins) {
+			tools = [...tools, ...plugin.tools];
+			if (plugin.programmaticTools.length > 0) {
+				tools = [...tools, ...plugin.programmaticTools.map(toAgentTool)];
+			}
+		}
+
 		// SDK-provided tools
 		if (options.tools) {
 			tools = [...tools, ...options.tools.map(toAgentTool)];
@@ -201,8 +210,9 @@ export function query(options: QueryOptions): Query {
 			tools = tools.filter((t) => !denied.has(t.name));
 		}
 
-		// 4. Wrap with script-based hooks
-		const hooksConfig = await loadHooksConfig(loaded.agentDir);
+		// 4. Wrap with script-based hooks (agent + plugin hooks merged)
+		const agentHooksConfig = await loadHooksConfig(loaded.agentDir);
+		const hooksConfig = mergeHooksConfigs(agentHooksConfig, loaded.plugins);
 		if (hooksConfig) {
 			tools = tools.map((t) =>
 				wrapToolWithHooks(t, hooksConfig, loaded.agentDir, _sessionId),
