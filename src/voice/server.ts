@@ -53,13 +53,27 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 		});
 
 		let text = "";
+		const toolResults: string[] = [];
+		const errors: string[] = [];
+
 		for await (const msg of result) {
 			if (msg.type === "assistant" && msg.content) {
 				text += msg.content;
+			} else if (msg.type === "tool_result" && msg.content) {
+				toolResults.push(msg.content);
+				console.log(dim(`[voice] Tool ${msg.toolName}: ${msg.content.slice(0, 100)}${msg.content.length > 100 ? "..." : ""}`));
+			} else if (msg.type === "system" && msg.subtype === "error") {
+				errors.push(msg.content);
+				console.error(dim(`[voice] Agent error: ${msg.content}`));
+			} else if (msg.type === "delta") {
+				// Skip deltas, we get the full text from assistant message
 			}
 		}
 
-		return text || "(no response)";
+		if (text) return text;
+		if (errors.length > 0) return `Error: ${errors.join("; ")}`;
+		if (toolResults.length > 0) return toolResults.join("\n");
+		return "(no response)";
 	};
 
 	// HTTP server
