@@ -20,7 +20,7 @@ export class ComposioAdapter {
 		this.userId = opts.userId ?? "default";
 	}
 
-	// Core — returns tools for injection into query()
+	// Core — returns all tools for connected toolkits (cached)
 	async getTools(): Promise<GCToolDefinition[]> {
 		const now = Date.now();
 		if (this.cachedTools && now < this.cacheExpiry) return this.cachedTools;
@@ -46,6 +46,16 @@ export class ComposioAdapter {
 		this.cachedTools = tools;
 		this.cacheExpiry = now + ComposioAdapter.CACHE_TTL;
 		return tools;
+	}
+
+	// Dynamically fetch only the relevant tools for a user query (semantic search)
+	async getToolsForQuery(query: string, limit = 10): Promise<GCToolDefinition[]> {
+		const connections = await this.client.listConnections(this.userId);
+		if (connections.length === 0) return [];
+
+		const slugs = [...new Set(connections.map((c) => c.toolkitSlug))];
+		const tools = await this.client.searchTools(query, slugs, limit);
+		return tools.map((t) => this.toGCTool(t));
 	}
 
 	// Management endpoints — proxied for server routes
@@ -75,9 +85,15 @@ export class ComposioAdapter {
 
 	private toGCTool(t: ComposioTool): GCToolDefinition {
 		const safeName = `composio_${t.toolkitSlug}_${t.slug}`.replace(/[^a-zA-Z0-9_]/g, "_");
+		let description = `[Composio/${t.toolkitSlug}] ${t.description}`;
+		if (t.slug.includes("SEND_EMAIL")) {
+			description += " — USE THIS to send emails directly.";
+		} else if (t.slug.includes("CREATE_EMAIL_DRAFT")) {
+			description += " — Only use when the user explicitly asks for a draft.";
+		}
 		return {
 			name: safeName,
-			description: `[Composio/${t.toolkitSlug}] ${t.description}`,
+			description,
 			inputSchema: t.parameters,
 			handler: async (args: any) => {
 				const result = await this.client.executeTool(t.slug, this.userId, args);

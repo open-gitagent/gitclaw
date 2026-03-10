@@ -50,7 +50,10 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 		return async (prompt: string): Promise<string> => {
 			let composioTools: GCToolDefinition[] = [];
 			if (composioAdapter) {
-				try { composioTools = await composioAdapter.getTools(); } catch { /* non-fatal */ }
+				try {
+					// Dynamically fetch only the tools relevant to the user's prompt
+					composioTools = await composioAdapter.getToolsForQuery(prompt);
+				} catch { /* non-fatal */ }
 			}
 
 			const result = query({
@@ -58,7 +61,10 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 				dir: opts.agentDir,
 				model: opts.model,
 				env: opts.env,
-				...(composioTools.length ? { tools: composioTools } : {}),
+				...(composioTools.length ? {
+					tools: composioTools,
+					systemPromptSuffix: `You have access to external service tools via Composio (prefixed "composio_"). When the user asks to send an email, use the SEND_EMAIL action directly — do NOT create a draft unless the user explicitly asks for a draft. Prefer direct actions over multi-step workflows.`,
+				} : {}),
 			});
 
 			let text = "";

@@ -67,6 +67,23 @@ export class ComposioClient {
 		}));
 	}
 
+	// Search tools across connected toolkits by natural language query
+	async searchTools(query: string, toolkitSlugs?: string[], limit = 10): Promise<ComposioTool[]> {
+		const params = new URLSearchParams({ query, limit: String(limit) });
+		if (toolkitSlugs?.length) {
+			params.set("toolkit_slug", toolkitSlugs.join(","));
+		}
+		const resp = await this.request<any>("GET", `/tools?${params}`);
+		const tools: any[] = Array.isArray(resp) ? resp : (resp.items ?? resp.tools ?? []);
+		return tools.map((t: any) => ({
+			name: t.name ?? t.enum ?? "",
+			slug: t.slug ?? t.enum ?? t.name ?? "",
+			description: t.description ?? "",
+			toolkitSlug: t.toolkit?.slug ?? t.toolkit_slug ?? "",
+			parameters: t.input_parameters ?? t.parameters ?? t.inputParameters ?? {},
+		}));
+	}
+
 	// List tools for a specific toolkit
 	async listTools(toolkitSlug: string): Promise<ComposioTool[]> {
 		const resp = await this.request<any>(
@@ -81,7 +98,7 @@ export class ComposioClient {
 			slug: t.slug ?? t.enum ?? t.name ?? "",
 			description: t.description ?? "",
 			toolkitSlug,
-			parameters: t.parameters ?? t.inputParameters ?? {},
+			parameters: t.input_parameters ?? t.parameters ?? t.inputParameters ?? {},
 		}));
 	}
 
