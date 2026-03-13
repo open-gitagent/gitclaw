@@ -293,6 +293,28 @@ export async function loadAgent(
 	const complianceBlock = await loadComplianceContext(agentDir);
 	if (complianceBlock) parts.push(complianceBlock);
 
+	// Task learning & skill discovery
+	parts.push(`# Task Learning & Skill Discovery
+
+You have an intelligent learning system. For complex multi-step tasks:
+
+1. Call \`task_tracker\` action "begin" with your objective — this searches for existing skills
+2. If a matching skill is found with high confidence, follow its instructions
+3. Call \`task_tracker\` action "update" after each significant step
+4. Call \`task_tracker\` action "end" to report the outcome (success/failure/partial)
+
+On SUCCESS:
+- Call \`skill_learner\` action "evaluate" to check if this approach is worth saving
+- If worthy, call \`skill_learner\` action "crystallize" to save it as a reusable skill
+- The skill will be available in future sessions via /skill:<name>
+
+On FAILURE:
+- Record why it failed. Try a different approach.
+- Failed approaches become negative examples — they won't be repeated
+
+If you used an existing skill, report it via skill_used so confidence adjusts based on the outcome.
+Do NOT track trivial single-command tasks. Only track multi-step work.`);
+
 	const systemPrompt = parts.join("\n\n");
 
 	// Resolve model — env config model_override > CLI flag > manifest preferred

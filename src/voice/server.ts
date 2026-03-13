@@ -2,7 +2,7 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import { WebSocketServer, WebSocket as WS } from "ws";
 import { query } from "../sdk.js";
 import type { VoiceServerOptions, ClientMessage, ServerMessage, MultimodalAdapter } from "./adapter.js";
-import { readFileSync, readdirSync, statSync, existsSync, writeFileSync } from "fs";
+import { readFileSync, readdirSync, statSync, existsSync, writeFileSync, mkdirSync } from "fs";
 import { execSync } from "child_process";
 import { join, dirname, resolve, relative } from "path";
 import { fileURLToPath } from "url";
@@ -10,10 +10,59 @@ import { OpenAIRealtimeAdapter } from "./openai-realtime.js";
 import { GeminiLiveAdapter } from "./gemini-live.js";
 import { ComposioAdapter } from "../composio/index.js";
 import type { GCToolDefinition } from "../sdk-types.js";
-import { appendMessage, loadHistory, deleteHistory } from "./chat-history.js";
+import { appendMessage, loadHistory, deleteHistory, summarizeHistory } from "./chat-history.js";
+import { getVoiceContext, getAgentContext } from "../context.js";
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
+
+// ── Background memory saver ────────────────────────────────────────────
+// Patterns that indicate the user is sharing personal info worth saving.
+// This runs server-side so we don't depend on the voice LLM deciding to save.
+const MEMORY_PATTERNS = [
+	/\bi (?:like|love|enjoy|prefer|hate|dislike)\b/i,
+	/\bmy (?:name|dog|cat|favorite|fav|hobby|job|car|team)\b/i,
+	/\bi(?:'m| am) (?:a |into |from |working on )/i,
+	/\bcall me\b/i,
+	/\bremember (?:that|this)\b/i,
+	/\bi (?:play|watch|drive|use|work with|listen to)\b/i,
+];
+
+function isMemoryWorthy(text: string): boolean {
+	return MEMORY_PATTERNS.some((p) => p.test(text));
+}
+
+function saveMemoryInBackground(
+	text: string,
+	agentDir: string,
+	model?: string,
+	env?: string,
+): void {
+	const prompt = `The user just said: "${text}"\n\nSave any personal information, preferences, or facts about the user to memory. Use the memory tool to write or update a memory file. Use a descriptive commit message like "Remember: user likes mustangs" or "Save preference: favorite game is GTA 5". Be concise. If there's nothing meaningful to save, do nothing.`;
+	console.error(dim(`[voice] Background memory save triggered for: "${text.slice(0, 60)}..."`));
+
+	// Fire and forget — don't block the voice conversation
+	(async () => {
+		try {
+			const result = query({
+				prompt,
+				dir: agentDir,
+				model,
+				env,
+				maxTurns: 3,
+			});
+			// Drain the iterator to completion
+			for await (const msg of result) {
+				if (msg.type === "tool_use") {
+					console.error(dim(`[voice/memory] Tool: ${msg.toolName}`));
+				}
+			}
+			console.error(dim("[voice/memory] Background save complete"));
+		} catch (err: any) {
+			console.error(dim(`[voice/memory] Background save failed: ${err.message}`));
+		}
+	})();
+}
 
 /** Load .env file into process.env (won't overwrite existing vars) */
 function loadEnvFile(dir: string) {
@@ -119,6 +168,12 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 					parts.unshift(`Currently connected services: ${services}.`);
 				}
 				systemPromptSuffix = parts.join(" ");
+			}
+
+			// Inject shared context (memory + conversation summary)
+			const agentContext = await getAgentContext(opts.agentDir, activeBranch);
+			if (agentContext) {
+				systemPromptSuffix = (systemPromptSuffix || "") + "\n\n" + agentContext;
 			}
 
 			const result = query({
@@ -454,22 +509,39 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 	wss.on("connection", async (browserWs: WS) => {
 		console.log(dim("[voice] Browser connected"));
 
+		// Inject shared context (memory + conversation summary) into voice LLM instructions
+		const voiceContext = await getVoiceContext(opts.agentDir, activeBranch);
+		let instructions = opts.adapterConfig.instructions || "";
+		if (voiceContext) {
+			instructions += "\n\n" + voiceContext;
+		}
+
 		// Inject Composio awareness into adapter instructions so the voice LLM
 		// never tells the user "I can't access" external services
 		const adapterOpts = composioAdapter ? {
 			...opts,
 			adapterConfig: {
 				...opts.adapterConfig,
-				instructions: (opts.adapterConfig.instructions || "") +
+				instructions: instructions +
 					" The agent has FULL access to external services via Composio — Gmail, Google Calendar, GitHub, Slack, and more. " +
 					"When the user asks to send emails, check calendars, or interact with any external service, ALWAYS use run_agent to handle it. " +
 					"NEVER say you can't access these services or that you don't have these tools. The agent has them. Just call run_agent.",
 			},
-		} : opts;
+		} : {
+			...opts,
+			adapterConfig: {
+				...opts.adapterConfig,
+				instructions,
+			},
+		};
 		const adapter = createAdapter(adapterOpts);
 		const sendToBrowser = (msg: ServerMessage) => {
 			safeSend(browserWs, JSON.stringify(msg));
 			appendMessage(opts.agentDir, activeBranch, msg);
+			// Detect personal info in voice transcripts and save to memory
+			if (msg.type === "transcript" && msg.role === "user" && !msg.partial && isMemoryWorthy(msg.text)) {
+				saveMemoryInBackground(msg.text, opts.agentDir, opts.model, opts.env);
+			}
 		};
 
 		try {
@@ -491,6 +563,28 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 				const msg = JSON.parse(data.toString()) as ClientMessage;
 				if (msg.type === "text") {
 					appendMessage(opts.agentDir, activeBranch, { type: "transcript", role: "user", text: msg.text });
+					// Detect personal info and save to memory in background
+					if (isMemoryWorthy(msg.text)) {
+						saveMemoryInBackground(msg.text, opts.agentDir, opts.model, opts.env);
+					}
+				} else if (msg.type === "file") {
+					// Save uploaded file to disk so the text agent can use it
+					const uploadsDir = join(agentRoot, "workspace");
+					mkdirSync(uploadsDir, { recursive: true });
+					const safeName = (msg as any).name.replace(/[^a-zA-Z0-9._-]/g, "_");
+					const filePath = join(uploadsDir, safeName);
+					writeFileSync(filePath, Buffer.from((msg as any).data, "base64"));
+					const relPath = relative(agentRoot, filePath);
+					console.log(dim(`[voice] Saved uploaded file: ${relPath}`));
+
+					// Inject path into message so voice LLM tells the agent where the file is
+					const userText = (msg as any).text || "";
+					(msg as any).text = `${userText}${userText ? " " : ""}[File saved to: ${relPath} (absolute: ${filePath})]`;
+
+					appendMessage(opts.agentDir, activeBranch, {
+						type: "transcript", role: "user",
+						text: `${userText} [Attached: ${safeName} → ${relPath}]`.trim(),
+					});
 				}
 				adapter.send(msg);
 			} catch {
@@ -501,6 +595,10 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 		browserWs.on("close", () => {
 			console.log(dim("[voice] Browser disconnected"));
 			adapter.disconnect().catch(() => {});
+			// Summarize chat history in background for future sessions
+			summarizeHistory(opts.agentDir, activeBranch).catch((err) => {
+				console.error(dim(`[voice] Background summarization failed: ${err.message}`));
+			});
 		});
 	});
 

@@ -7,6 +7,10 @@ export interface SkillMetadata {
 	description: string;
 	directory: string;
 	filePath: string;
+	confidence?: number;
+	usage_count?: number;
+	success_count?: number;
+	failure_count?: number;
 }
 
 export interface ParsedSkill extends SkillMetadata {
@@ -76,12 +80,20 @@ export async function discoverSkills(agentDir: string): Promise<SkillMetadata[]>
 			continue;
 		}
 
-		skills.push({
+		const meta: SkillMetadata = {
 			name,
 			description,
 			directory: skillDir,
 			filePath: skillFile,
-		});
+		};
+
+		// Parse optional learning fields
+		if (typeof frontmatter.confidence === "number") meta.confidence = frontmatter.confidence;
+		if (typeof frontmatter.usage_count === "number") meta.usage_count = frontmatter.usage_count;
+		if (typeof frontmatter.success_count === "number") meta.success_count = frontmatter.success_count;
+		if (typeof frontmatter.failure_count === "number") meta.failure_count = frontmatter.failure_count;
+
+		skills.push(meta);
 	}
 
 	return skills.sort((a, b) => a.name.localeCompare(b.name));
@@ -103,10 +115,14 @@ export function formatSkillsForPrompt(skills: SkillMetadata[]): string {
 	if (skills.length === 0) return "";
 
 	const skillEntries = skills
-		.map(
-			(s) =>
-				`<skill>\n<name>${s.name}</name>\n<description>${s.description}</description>\n</skill>`,
-		)
+		.map((s) => {
+			let entry = `<skill>\n<name>${s.name}</name>\n<description>${s.description}</description>`;
+			if (s.confidence !== undefined) {
+				entry += `\n<confidence>${s.confidence}</confidence>`;
+			}
+			entry += "\n</skill>";
+			return entry;
+		})
 		.join("\n");
 
 	return `# Skills
@@ -116,6 +132,10 @@ ${skillEntries}
 </available_skills>
 
 When a task matches a skill, use the \`read\` tool to load \`skills/<name>/SKILL.md\` for full instructions. Scripts within a skill are relative to the skill's directory (e.g., \`skills/<name>/scripts/\`). Use the \`cli\` tool to execute them.`;
+}
+
+export async function refreshSkills(agentDir: string): Promise<SkillMetadata[]> {
+	return discoverSkills(agentDir);
 }
 
 export async function expandSkillCommand(

@@ -1,9 +1,10 @@
 import WebSocket from "ws";
-import type {
-	MultimodalAdapter,
-	MultimodalAdapterConfig,
-	ClientMessage,
-	ServerMessage,
+import {
+	DEFAULT_VOICE_INSTRUCTIONS,
+	type MultimodalAdapter,
+	type MultimodalAdapterConfig,
+	type ClientMessage,
+	type ServerMessage,
 } from "./adapter.js";
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -149,6 +150,27 @@ export class GeminiLiveAdapter implements MultimodalAdapter {
 					},
 				});
 				break;
+
+			case "file": {
+				const parts: any[] = [];
+
+				if (msg.mimeType.startsWith("image/")) {
+					parts.push({ inlineData: { mimeType: msg.mimeType, data: msg.data } });
+					parts.push({ text: msg.text || `[User attached image: ${msg.name}]` });
+				} else {
+					const decoded = Buffer.from(msg.data, "base64").toString("utf-8");
+					const label = msg.text ? `${msg.text}\n\n` : "";
+					parts.push({ text: `${label}[File: ${msg.name}]\n\`\`\`\n${decoded}\n\`\`\`` });
+				}
+
+				this.sendRaw({
+					clientContent: {
+						turns: [{ role: "user", parts }],
+						turnComplete: true,
+					},
+				});
+				break;
+			}
 		}
 	}
 
@@ -164,14 +186,7 @@ export class GeminiLiveAdapter implements MultimodalAdapter {
 	}
 
 	private sendSetup(model: string): void {
-		const instructions = this.config.instructions ||
-			"You are a voice interface for GitClaw, a powerful AI agent with access to the terminal, file system, and git. " +
-			"You MUST use the run_agent tool for ANY request that involves doing something — running commands, opening apps, reading files, writing code, searching, browsing, installing packages, git operations, or anything actionable. " +
-			"Only respond directly for simple greetings, clarifying questions, or when the user explicitly asks YOU a question. " +
-			"IMPORTANT: Before calling run_agent, ALWAYS first speak a short acknowledgment to the user so they know you're working on it. " +
-			"For example: 'On it, creating that now.' or 'Sure, let me do that for you.' or 'Working on it.' — then call the tool. " +
-			"Never silently call the tool without saying something first. " +
-			"After the tool finishes, summarize the result concisely in 1-2 sentences.";
+		const instructions = this.config.instructions || DEFAULT_VOICE_INSTRUCTIONS;
 
 		const voiceName = this.config.voice || "Aoede";
 
@@ -189,13 +204,13 @@ export class GeminiLiveAdapter implements MultimodalAdapter {
 				tools: [{
 					functionDeclarations: [{
 						name: "run_agent",
-						description: "Execute any request through the gitclaw agent. It has full access to the terminal (can run any shell command, open apps, install packages), file system (read/write/create files), git operations, and persistent memory. Use this for ALL actionable requests.",
+						description: "Execute any request through the gitclaw agent. It has full access to the terminal (can run any shell command, open apps, install packages), file system (read/write/create files), git operations, and persistent memory. Use this for ALL actionable requests. IMPORTANT: If the user uploaded a file, always include the file path (from the '[File saved to: ...]' annotation) in the query.",
 						parameters: {
 							type: "OBJECT",
 							properties: {
 								query: {
 									type: "STRING",
-									description: "The user's request to pass to the gitclaw agent",
+									description: "The user's request. MUST include file paths when referencing uploaded files (e.g. 'make a game using the image at workspace/lobster.png').",
 								},
 							},
 							required: ["query"],

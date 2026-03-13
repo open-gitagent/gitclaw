@@ -179,6 +179,7 @@ export function query(options: QueryOptions): Query {
 				dir,
 				timeout: loaded.manifest.runtime.timeout,
 				sandbox: sandboxCtx,
+				gitagentDir: loaded.gitagentDir,
 			});
 		}
 

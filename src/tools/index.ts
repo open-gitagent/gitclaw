@@ -4,6 +4,8 @@ import { createCliTool } from "./cli.js";
 import { createReadTool } from "./read.js";
 import { createWriteTool } from "./write.js";
 import { createMemoryTool } from "./memory.js";
+import { createTaskTrackerTool } from "./task-tracker.js";
+import { createSkillLearnerTool } from "./skill-learner.js";
 import { createSandboxCliTool } from "./sandbox-cli.js";
 import { createSandboxReadTool } from "./sandbox-read.js";
 import { createSandboxWriteTool } from "./sandbox-write.js";
@@ -13,10 +15,11 @@ export interface BuiltinToolsConfig {
 	dir: string;
 	timeout?: number;
 	sandbox?: SandboxContext;
+	gitagentDir?: string;
 }
 
 /**
- * Create the four built-in tools (cli, read, write, memory).
+ * Create the built-in tools (cli, read, write, memory, task_tracker, skill_learner).
  * If a SandboxContext is provided, returns sandbox-backed tools;
  * otherwise returns the standard local tools.
  */
@@ -30,10 +33,18 @@ export function createBuiltinTools(config: BuiltinToolsConfig): AgentTool<any>[]
 		];
 	}
 
-	return [
+	const tools: AgentTool<any>[] = [
 		createCliTool(config.dir, config.timeout),
 		createReadTool(config.dir),
 		createWriteTool(config.dir),
 		createMemoryTool(config.dir),
 	];
+
+	// Add learning tools if gitagentDir is available
+	if (config.gitagentDir) {
+		tools.push(createTaskTrackerTool(config.dir, config.gitagentDir));
+		tools.push(createSkillLearnerTool(config.dir, config.gitagentDir));
+	}
+
+	return tools;
 }

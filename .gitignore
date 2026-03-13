@@ -8,3 +8,5 @@ snake-game.html
 examples/debug-events.ts
 .env
 cmd
+workspace/
+.DS_Store

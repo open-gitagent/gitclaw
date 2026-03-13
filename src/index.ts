@@ -7,7 +7,7 @@ import { loadAgent } from "./loader.js";
 import { createBuiltinTools } from "./tools/index.js";
 import { createSandboxContext } from "./sandbox.js";
 import type { SandboxContext, SandboxConfig } from "./sandbox.js";
-import { expandSkillCommand } from "./skills.js";
+import { expandSkillCommand, refreshSkills } from "./skills.js";
 import { loadHooksConfig, runHooks, wrapToolWithHooks } from "./hooks.js";
 import type { HooksConfig } from "./hooks.js";
 import { loadDeclarativeTools } from "./tool-loader.js";
@@ -462,6 +462,7 @@ async function main(): Promise<void> {
 		dir,
 		timeout: manifest.runtime.timeout,
 		sandbox: sandboxCtx,
+		gitagentDir,
 	});
 
 	// Load declarative tools from tools/*.yaml (Phase 2.2)
@@ -508,7 +509,7 @@ async function main(): Promise<void> {
 	if (loaded.subAgents.length > 0) {
 		console.log(dim(`Agents: ${loaded.subAgents.map((a) => a.name).join(", ")}`));
 	}
-	console.log(dim('Type /skills to list skills, /memory to view memory, /quit to exit\n'));
+	console.log(dim('Type /skills, /tasks, /learned, /memory, /quit\n'));
 
 	// Single-shot mode
 	if (prompt) {
@@ -577,11 +578,49 @@ async function main(): Promise<void> {
 			}
 
 			if (trimmed === "/skills") {
-				if (skills.length === 0) {
+				// Refresh skills to pick up any newly learned ones
+				const currentSkills = await refreshSkills(dir);
+				if (currentSkills.length === 0) {
 					console.log(dim("No skills installed."));
 				} else {
-					for (const s of skills) {
-						console.log(`  ${bold(s.name)} — ${dim(s.description)}`);
+					for (const s of currentSkills) {
+						const conf = s.confidence !== undefined ? dim(` [confidence: ${s.confidence}]`) : "";
+						console.log(`  ${bold(s.name)} — ${dim(s.description)}${conf}`);
+					}
+				}
+				ask();
+				return;
+			}
+
+			if (trimmed === "/tasks") {
+				try {
+					const tasksRaw = await readFile(join(gitagentDir, "learning", "tasks.json"), "utf-8");
+					const tasksData = JSON.parse(tasksRaw);
+					const active = (tasksData.tasks || []).filter((t: any) => t.status === "active");
+					if (active.length === 0) {
+						console.log(dim("No active tasks."));
+					} else {
+						for (const t of active) {
+							console.log(`  ${bold(t.id.slice(0, 8))} — ${t.objective} (${t.steps.length} steps, attempt #${t.attempts})`);
+						}
+					}
+				} catch {
+					console.log(dim("No tasks recorded yet."));
+				}
+				ask();
+				return;
+			}
+
+			if (trimmed === "/learned") {
+				const currentSkills = await refreshSkills(dir);
+				const learned = currentSkills.filter((s) => s.confidence !== undefined);
+				if (learned.length === 0) {
+					console.log(dim("No learned skills yet."));
+				} else {
+					for (const s of learned) {
+						const usage = s.usage_count ?? 0;
+						const ratio = `${s.success_count ?? 0}/${(s.success_count ?? 0) + (s.failure_count ?? 0)}`;
+						console.log(`  ${bold(s.name)} — confidence: ${s.confidence}, usage: ${usage}, success: ${ratio}`);
 					}
 				}
 				ask();

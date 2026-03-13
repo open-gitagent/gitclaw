@@ -34,6 +34,25 @@ export const memorySchema = Type.Object({
 	message: Type.Optional(Type.String({ description: "Commit message describing why this memory changed (required for save)" })),
 });
 
+export const taskTrackerSchema = Type.Object({
+	action: StringEnum(["begin", "update", "end", "list"], { description: "Action to perform" }),
+	objective: Type.Optional(Type.String({ description: "Task objective (required for begin)" })),
+	task_id: Type.Optional(Type.String({ description: "Task ID (required for update/end)" })),
+	step: Type.Optional(Type.String({ description: "Step description (for update)" })),
+	outcome: Type.Optional(StringEnum(["success", "failure", "partial"], { description: "Task outcome (for end)" })),
+	failure_reason: Type.Optional(Type.String({ description: "Why the task failed (for end+failure)" })),
+	skill_used: Type.Optional(Type.String({ description: "Name of skill used, if any (for end)" })),
+});
+
+export const skillLearnerSchema = Type.Object({
+	action: StringEnum(["evaluate", "crystallize", "status", "review", "update", "delete"], { description: "Action to perform" }),
+	task_id: Type.Optional(Type.String({ description: "Task ID (for evaluate/crystallize)" })),
+	skill_name: Type.Optional(Type.String({ description: "Skill name (for crystallize/update/delete)" })),
+	skill_description: Type.Optional(Type.String({ description: "Skill description (for crystallize)" })),
+	instructions: Type.Optional(Type.String({ description: "New instructions content (for update)" })),
+	override_heuristic: Type.Optional(Type.Boolean({ description: "Override skill-worthiness heuristic (for evaluate)" })),
+});
+
 // ── Shared helpers ──────────────────────────────────────────────────────
 
 /** Truncate output to MAX_OUTPUT, keeping the tail. */
