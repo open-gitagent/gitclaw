@@ -206,6 +206,14 @@
   .agent-working-name { color: #ff4f63; font-weight: 600; }
   .agent-working-sep { color: #e6edf3; font-weight: 600; }
   .agent-working-query { color: #8b949e; }
+  .conv-msg.memory-saving { display: flex; align-items: center; gap: 8px; height: 28px; overflow: hidden; }
+  .memory-saving-spinner {
+    width: 14px; height: 14px; flex-shrink: 0;
+    border: 2px solid rgba(163,113,247,0.2); border-top-color: #a371f7;
+    border-radius: 50%; animation: agentSpin 1.2s linear infinite;
+  }
+  .memory-saving-text { font-size: 11px; color: #a371f7; font-style: italic; animation: verbPulse 2s ease-in-out infinite; }
+  .memory-saving-detail { font-size: 10px; color: #8b949e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .conv-msg.tool-call { color: #d2a8ff; font-size: 11px; }
   .conv-msg.tool-call .label { color: #bc8cff; font-weight: 600; }
   .conv-msg.tool-result { color: #7ee787; font-size: 11px; }
@@ -825,7 +833,7 @@
     </div>
   </div>
   <div class="header-right">
-    <button class="audit-toggle" id="auditToggle" onclick="toggleAuditMode()" title="File System: watch agent file changes live">
+    <button class="audit-toggle active recording" id="auditToggle" onclick="toggleAuditMode()" title="File System: watch agent file changes live">
       <span class="audit-dot"></span>
       <span>File System</span>
     </button>
@@ -919,7 +927,7 @@
       </div>
       <div class="drop-overlay" id="dropOverlay">Drop files here</div>
     </div>
-    <div class="files-panel collapsed" id="filesPanel">
+    <div class="files-panel" id="filesPanel">
       <div class="resize-handle-x" id="fpResizeX"></div>
       <div class="files-panel-header">
         <span class="fp-title">Files <span class="fp-count hidden" id="fpCount">0</span></span>
@@ -1163,7 +1171,7 @@ var statusDot=document.getElementById('statusDot'),statusText=document.getElemen
 
 function setStatus(t,s){statusText.textContent=t;statusDot.className='status-dot '+(s||'');}
 function appendConv(h,c){var d=document.createElement('div');d.className='conv-msg '+(c||'');d.innerHTML=h;conv.appendChild(d);conv.scrollTop=conv.scrollHeight;}
-function connectWS(){if(ws)return;setStatus('Connecting...','');ws=new WebSocket('ws://'+window.location.host);ws.onopen=function(){setStatus('Connected','connected');};ws.onmessage=function(e){try{handleServerMessage(JSON.parse(e.data));}catch(x){}};ws.onerror=function(){setStatus('Connection error','error');};ws.onclose=function(){ws=null;setStatus('Disconnected','');stopMic();stopCamera();stopScreen();};}
+function connectWS(){if(ws)return;setStatus('Connecting...','');ws=new WebSocket('ws://'+window.location.host);ws.onopen=function(){setStatus('Connected','connected');if(auditMode)loadExplorerTree();};ws.onmessage=function(e){try{handleServerMessage(JSON.parse(e.data));}catch(x){}};ws.onerror=function(){setStatus('Connection error','error');};ws.onclose=function(){ws=null;setStatus('Disconnected','');stopMic();stopCamera();stopScreen();};}
 function sendMsg(m){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
 
 // Agent Vitals
@@ -1330,6 +1338,18 @@ function handleServerMessage(m){switch(m.type){
     setStatus('Connected','connected');
     if(filesLoaded)loadFileTree();
     refreshFileTree();break;
+  case'memory_saving':
+    if(m.status==='start'){
+      var msEl=document.createElement('div');msEl.className='conv-msg memory-saving';msEl.id='memory-saving-indicator';
+      var msSpinner=document.createElement('div');msSpinner.className='memory-saving-spinner';msEl.appendChild(msSpinner);
+      var msText=document.createElement('span');msText.className='memory-saving-text';msText.textContent='< remembering... >';msEl.appendChild(msText);
+      if(m.text){var msDetail=document.createElement('span');msDetail.className='memory-saving-detail';msDetail.textContent=m.text;msEl.appendChild(msDetail);}
+      conv.appendChild(msEl);conv.scrollTop=conv.scrollHeight;
+    } else {
+      var existing=document.getElementById('memory-saving-indicator');
+      if(existing)existing.remove();
+    }
+    break;
   case'tool_call':
     thinkingEl=null;
     toolCount++;
@@ -2122,7 +2142,7 @@ var ICONS={chevronRight:'<svg width="14" height="14" viewBox="0 0 24 24" fill="n
 function getFileIconClass(n){var e=n.split('.').pop().toLowerCase();if(['ts','tsx'].includes(e))return'ts';if(['js','jsx','mjs'].includes(e))return'js';if(e==='json')return'json';if(['css','scss','less'].includes(e))return'css';if(['html','htm'].includes(e))return'html';if(['md','txt','rst'].includes(e))return'md';if(['yaml','yml'].includes(e))return'yaml';if(e==='py')return'py';if(['sh','bash','zsh'].includes(e))return'sh';return'default';}
 function getFileIconSvg(n){var c=getFileIconClass(n);if(['ts','js','css','html','py','sh'].includes(c))return ICONS.fileCode;return ICONS.file;}
 
-var auditMode=false;
+var auditMode=true;
 var auditBaselineMtimes=null; // snapshot taken when audit mode turns on — never triggers EDITED
 var fileTreeMtimes={};
 var diffOpenPath=null;
@@ -2274,7 +2294,7 @@ function renderExplorerTree(entries,parent,depth,justChanged,justNew){
     if(entry.type==='directory'){
       var dirHasChanges=justChanged&&justChanged.some(function(p){return p.startsWith(entry.path+'/');});
       var dirHasNew=justNew&&justNew.some(function(p){return p.startsWith(entry.path+'/');});
-      var autoExpand=entry.name==='memory'||entry.name==='skills'||dirHasChanges||dirHasNew;
+      var autoExpand=entry.name==='memory'||dirHasChanges||dirHasNew;
       var det=document.createElement('details');
       det.className='ft-dir';
       det.dataset.path=entry.path;

@@ -257,7 +257,7 @@ export async function loadAgent(
 	if (agentsMd) parts.push(agentsMd);
 
 	parts.push(
-		`# Memory\n\nYou have a memory file at memory/MEMORY.md. Use the \`memory\` tool to load and save memories. Each save creates a git commit, so your memory has full history. You can also use the \`cli\` tool to run git commands for deeper memory inspection (git log, git diff, git show).`,
+		`# Memory\n\nYou have a memory file at memory/MEMORY.md. Use the \`memory\` tool to load and save memories. Each save creates a git commit, so your memory has full history. You can also use the \`cli\` tool to run git commands for deeper memory inspection (git log, git diff, git show).\n\nYour memories define who you are. When you have none, you are newly awakened — curious and eager to understand the person you're talking to. As memories grow, so do you. Save memories proactively when you learn something meaningful about the user.`,
 	);
 
 	// Discover and load knowledge

@@ -24,9 +24,14 @@ const MEMORY_PATTERNS = [
 	/\bi (?:like|love|enjoy|prefer|hate|dislike)\b/i,
 	/\bmy (?:name|dog|cat|favorite|fav|hobby|job|car|team)\b/i,
 	/\bi(?:'m| am) (?:a |into |from |working on )/i,
+	/\bi(?:'m| am) \w+$/i,                           // "I am Shreyas", "I'm Zeus"
+	/\bmy name is\b/i,                                // "my name is ..."
 	/\bcall me\b/i,
 	/\bremember (?:that|this)\b/i,
 	/\bi (?:play|watch|drive|use|work with|listen to)\b/i,
+	/\bi(?:'m| am) \d+/i,                             // "I'm 25", age
+	/\bi (?:live|grew up|was born) (?:in|at|near)\b/i, // location info
+	/\bpeople call me\b/i,
 ];
 
 function isMemoryWorthy(text: string): boolean {
@@ -262,10 +267,13 @@ function saveMemoryInBackground(
 	agentDir: string,
 	model?: string,
 	env?: string,
+	onStart?: () => void,
 	onComplete?: () => void,
 ): void {
 	const prompt = `The user just said: "${text}"\n\nSave any personal information, preferences, or facts about the user to memory. Use the memory tool to write or update a memory file. Use a descriptive commit message like "Remember: user likes mustangs" or "Save preference: favorite game is GTA 5". Be concise. If there's nothing meaningful to save, do nothing.`;
 	console.error(dim(`[voice] Background memory save triggered for: "${text.slice(0, 60)}..."`));
+
+	if (onStart) onStart();
 
 	// Fire and forget — don't block the voice conversation
 	(async () => {
@@ -287,6 +295,7 @@ function saveMemoryInBackground(
 			if (onComplete) onComplete();
 		} catch (err: any) {
 			console.error(dim(`[voice/memory] Background save failed: ${err.message}`));
+			if (onComplete) onComplete();
 		}
 	})();
 }
@@ -2182,6 +2191,9 @@ a{color:#58a6ff;}</style></head>
 			// Detect personal info in voice transcripts and save to memory
 			if (msg.type === "transcript" && msg.role === "user" && !msg.partial && isMemoryWorthy(msg.text)) {
 				saveMemoryInBackground(msg.text, opts.agentDir, opts.model, opts.env, () => {
+					broadcastToBrowsers({ type: "memory_saving", status: "start", text: msg.text.slice(0, 60) });
+				}, () => {
+					broadcastToBrowsers({ type: "memory_saving", status: "done" });
 					safeSend(browserWs, JSON.stringify({ type: "files_changed" }));
 				});
 			}
@@ -2249,6 +2261,9 @@ a{color:#58a6ff;}</style></head>
 					// Detect personal info and save to memory in background
 					if (isMemoryWorthy(msg.text)) {
 						saveMemoryInBackground(msg.text, opts.agentDir, opts.model, opts.env, () => {
+							broadcastToBrowsers({ type: "memory_saving", status: "start", text: msg.text.slice(0, 60) });
+						}, () => {
+							broadcastToBrowsers({ type: "memory_saving", status: "done" });
 							safeSend(browserWs, JSON.stringify({ type: "files_changed" }));
 						});
 					}

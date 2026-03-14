@@ -18,7 +18,8 @@ export interface ServerAgentThinking { type: "agent_thinking"; text: string; }
 export interface ServerError { type: "error"; message: string; }
 export interface ServerInterrupt { type: "interrupt"; }
 export interface ServerFilesChanged { type: "files_changed"; }
-export type ServerMessage = ServerAudioDelta | ServerTranscript | ServerAgentWorking | ServerAgentDone | ServerToolCall | ServerToolResult | ServerAgentThinking | ServerError | ServerInterrupt | ServerFilesChanged;
+export interface ServerMemorySaving { type: "memory_saving"; status: "start" | "done"; text?: string; }
+export type ServerMessage = ServerAudioDelta | ServerTranscript | ServerAgentWorking | ServerAgentDone | ServerToolCall | ServerToolResult | ServerAgentThinking | ServerError | ServerInterrupt | ServerFilesChanged | ServerMemorySaving;
 
 // Adapter interface — adapters receive ClientMessages, emit ServerMessages
 export interface MultimodalAdapter {
