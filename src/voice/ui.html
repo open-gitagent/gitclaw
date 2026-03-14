@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{AGENT_NAME}}</title>
+<title>Gitclaw: {{AGENT_NAME}}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -18,7 +18,17 @@
     padding: 0 20px; height: 40px; min-height: 40px;
     background: #0e1117; border-bottom: 1px solid #21262d;
   }
-  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-logo {
+    flex-shrink: 0; width: 22px; height: 22px;
+    display: grid; grid-template-columns: repeat(10,2.2px); grid-template-rows: repeat(10,2.2px);
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 4px rgba(255,79,99,0.9)) drop-shadow(0 0 12px rgba(255,79,99,0.5));
+  }
+  .header-logo .px { width: 2.2px; height: 2.2px; }
+  .header-logo .px-o { background: #12070b; }
+  .header-logo .px-f { background: #ff4f63; }
+  .header-logo .px-e { background: transparent; }
   .header-left h1 { font-size: 15px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
   .header-left h1 span { color: #58a6ff; }
   .header-right { display: flex; align-items: center; gap: 16px; }
@@ -132,6 +142,44 @@
   .ctrl-btn:hover { border-color: #30363d; color: #b1bac4; }
   .ctrl-btn.active { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,0.08); }
   .ctrl-btn svg { width: 14px; height: 14px; }
+  /* Agent Vitals */
+  .agent-vitals {
+    flex: 1; display: flex; flex-direction: column; gap: 0;
+    background: #0a0e14; border: 1px solid #21262d; border-radius: 8px; overflow: hidden;
+    font-family: 'IBM Plex Mono', monospace; position: relative;
+  }
+  .vitals-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid #161b22;
+  }
+  .vitals-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: #3fb950; font-weight: 600; }
+  .vitals-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #3fb950; animation: vitalPulse 1.5s ease-in-out infinite; }
+  @keyframes vitalPulse { 0%,100% { opacity: 1; box-shadow: 0 0 4px #3fb950; } 50% { opacity: 0.4; box-shadow: none; } }
+  .vitals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #161b22; flex: 1; }
+  .vital-cell {
+    background: #0a0e14; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
+    position: relative; overflow: hidden;
+  }
+  .vital-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #484f58; }
+  .vital-value { font-size: 16px; font-weight: 700; line-height: 1; }
+  .vital-unit { font-size: 8px; color: #484f58; font-weight: 400; }
+  .vital-bar { height: 2px; border-radius: 1px; background: #161b22; margin-top: 4px; }
+  .vital-bar-fill { height: 100%; border-radius: 1px; transition: width 0.8s ease; }
+  .vital-cell.cpu .vital-value { color: #58a6ff; }
+  .vital-cell.cpu .vital-bar-fill { background: #58a6ff; }
+  .vital-cell.mem .vital-value { color: #f0883e; }
+  .vital-cell.mem .vital-bar-fill { background: #f0883e; }
+  .vital-cell.tokens .vital-value { color: #d2a8ff; }
+  .vital-cell.tokens .vital-bar-fill { background: #d2a8ff; }
+  .vital-cell.uptime .vital-value { color: #3fb950; }
+  .vitals-wave {
+    height: 32px; padding: 0 10px; border-top: 1px solid #161b22;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .vitals-wave canvas { width: 100%; height: 24px; }
+  .vitals-wave-label { font-size: 8px; color: #f85149; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
+  .vital-cell.wide { grid-column: 1 / -1; }
+
   .panel-right { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #0d1117; overflow: hidden; position: relative; }
   .conversation {
     flex: 1; overflow-y: auto; padding: 16px 20px; font-size: 12px; line-height: 1.8;
@@ -146,11 +194,79 @@
   .conv-msg.assistant { color: #e6edf3; }
   .conv-msg.assistant .label { color: #3fb950; font-weight: 600; }
   .conv-msg.tool { color: #d29922; }
+  .conv-msg.agent-working { display: flex; align-items: center; gap: 10px; height: 32px; overflow: hidden; }
+  .agent-working-spinner {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 2px solid rgba(255,79,99,0.2); border-top-color: #ff4f63;
+    border-radius: 50%; animation: agentSpin 0.8s linear infinite;
+  }
+  @keyframes agentSpin { to { transform: rotate(360deg); } }
+  .agent-working-text { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-working-verb { color: #8b949e; font-style: italic; animation: verbPulse 2s ease-in-out infinite; }
+  .agent-working-name { color: #ff4f63; font-weight: 600; }
+  .agent-working-sep { color: #e6edf3; font-weight: 600; }
+  .agent-working-query { color: #8b949e; }
   .conv-msg.tool-call { color: #d2a8ff; font-size: 11px; }
   .conv-msg.tool-call .label { color: #bc8cff; font-weight: 600; }
   .conv-msg.tool-result { color: #7ee787; font-size: 11px; }
   .conv-msg.tool-result.error { color: #f85149; }
   .conv-msg.tool-result .label { font-weight: 600; }
+  .tool-activity { margin-bottom: 3px; overflow: hidden; height: 32px; display: flex; align-items: center; gap: 8px; }
+  .tool-activity .tool-sprite {
+    flex-shrink: 0; width: 24px; height: 24px;
+    display: grid; grid-template-columns: repeat(10,2.4px); grid-template-rows: repeat(10,2.4px);
+    image-rendering: pixelated;
+    animation: spriteFloat 1.8s ease-in-out infinite, spriteGlow 1.4s ease-in-out infinite;
+  }
+  .tool-activity .tool-sprite .px { width: 2.4px; height: 2.4px; }
+  .tool-activity .tool-sprite .px-o { background: #12070b; }
+  .tool-activity .tool-sprite .px-f { background: #ff4f63; animation: spriteColor 2.8s ease-in-out infinite; }
+  .tool-activity .tool-sprite .px-e { background: transparent; }
+  .tool-activity .tool-verb { color: #8b949e; font-size: 11px; font-style: italic; white-space: nowrap; flex-shrink: 0; animation: verbPulse 2s ease-in-out infinite; }
+  .tool-activity .tool-activity-body { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 32px; }
+  .tool-activity .tool-activity-body .tool-call,
+  .tool-activity .tool-activity-body .tool-result { display: inline; animation: toolFadeIn 0.2s ease-out; }
+  .tool-activity .tool-call,
+  .tool-activity .tool-result { color: #d2a8ff; font-size: 11px; }
+  .tool-activity .tool-call .label { color: #bc8cff; font-weight: 600; }
+  .tool-activity .tool-call .skill-label { color: #f0883e; }
+  .tool-activity .tool-call .skill-name { color: #ffa657; font-weight: 500; }
+  .tool-activity .tool-call .tool-args { display: inline; margin: 0; font-size: 11px; }
+  .tool-activity .tool-result { color: #7ee787; }
+  .tool-activity .tool-result.error { color: #f85149; }
+  .tool-activity .tool-result .label { font-weight: 600; }
+  .tool-activity .tool-result.thinking-fallback .label { color: #8b949e; font-style: italic; font-weight: 400; animation: verbPulse 2s ease-in-out infinite; }
+  .tool-activity .tool-result .tool-content { display: inline; margin: 0; padding: 0; background: none; font-size: 11px; max-height: none; overflow: hidden; }
+  .tool-activity-summary { cursor: pointer; color: #8b949e; font-size: 11px; line-height: 32px; }
+  .tool-activity-summary:hover { color: #c9d1d9; }
+  .tool-summary-toggle { user-select: none; }
+  .tool-activity.expanded { height: auto; }
+  .tool-activity.expanded .tool-activity-body { overflow: visible; white-space: normal; }
+  @keyframes toolFadeIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toolSummaryIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes spriteFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-3px) scale(1.05); }
+  }
+  @keyframes spriteGlow {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(255,79,99,0.6)) drop-shadow(0 0 5px rgba(255,79,99,0.3)); }
+    50% { filter: drop-shadow(0 0 5px rgba(255,79,99,1)) drop-shadow(0 0 10px rgba(255,79,99,0.6)); }
+  }
+  @keyframes spriteColor {
+    0%, 100% { background: #ff4f63; }
+    33% { background: #ff6b7a; }
+    66% { background: #ff2040; }
+  }
+  @keyframes verbPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
   .conv-msg.thinking { color: #6e7681; font-size: 11px; font-style: italic; }
   .conv-msg .tool-args { color: #8b949e; font-size: 10px; margin-top: 2px; word-break: break-all; max-height: 60px; overflow: hidden; }
   .conv-msg .tool-content { color: #8b949e; font-size: 10px; margin-top: 2px; white-space: pre-wrap; max-height: 80px; overflow-y: auto; background: #161b22; border-radius: 4px; padding: 4px 8px; }
@@ -586,6 +702,9 @@
   .tk-btn.connected { background: rgba(63,185,80,0.12); color: #3fb950; border: 1px solid #23612c; }
   .tk-btn.connected:hover { background: rgba(248,81,73,0.12); color: #f85149; border-color: #da3633; }
 
+  /* Skills Marketplace view */
+  .skills-view.hidden { display: none !important; }
+
   /* Communication view */
   .comms-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
   .comms-view.hidden { display: none; }
@@ -595,20 +714,46 @@
   }
   .comms-header h2 { font-size: 15px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; color: #e6edf3; margin: 0; }
   .comms-subtitle { font-size: 12px; color: #484f58; }
-  .comms-content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .comms-card {
-    background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 20px;
-    display: flex; flex-direction: column; gap: 16px; max-width: 520px;
+  .comms-content {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    align-content: start;
   }
+  .comms-card {
+    background: #161b22; border: 1px solid #21262d; border-radius: 12px; padding: 24px;
+    display: flex; flex-direction: column; gap: 16px;
+    transition: border-color 0.2s ease;
+  }
+  .comms-card:hover { border-color: #30363d; }
+  .comms-card.telegram { border-top: 2px solid #2AABEE; }
+  .comms-card.whatsapp { border-top: 2px solid #25D366; }
+  .comms-card.phone { border-top: 2px solid #f44336; }
   .comms-card-top { display: flex; align-items: flex-start; gap: 14px; }
   .comms-card-icon {
-    width: 40px; height: 40px; border-radius: 10px; background: #0d1117;
+    width: 48px; height: 48px; border-radius: 12px; background: #0d1117;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     color: #58a6ff;
   }
-  .comms-card-icon svg { width: 24px; height: 24px; }
-  .comms-card-icon.telegram { color: #2AABEE; }
-  .comms-card-icon.whatsapp { color: #25D366; }
+  .comms-card-icon svg { width: 28px; height: 28px; }
+  .comms-card-icon.telegram { color: #2AABEE; background: rgba(42,171,238,0.08); }
+  .comms-card-icon.whatsapp { color: #25D366; background: rgba(37,211,102,0.08); }
+  .comms-card-icon.phone { color: #f44336; background: rgba(244,67,54,0.08); }
+  .phone-url-box {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: #0d1117; border: 1px solid #21262d; border-radius: 8px; font-size: 12px;
+  }
+  .phone-url-box code {
+    flex: 1; color: #e6edf3; font-family: 'IBM Plex Mono', monospace; word-break: break-all;
+    font-size: 11px;
+  }
+  .phone-url-box .copy-btn {
+    background: none; border: 1px solid #30363d; color: #8b949e; border-radius: 6px;
+    padding: 4px 10px; cursor: pointer; font-size: 11px; white-space: nowrap;
+  }
+  .phone-url-box .copy-btn:hover { color: #e6edf3; border-color: #58a6ff; }
+  .phone-url-box .copy-btn.copied { color: #3fb950; border-color: #3fb950; }
   .conv-msg.whatsapp { border-left: 2px solid #25D366; padding-left: 8px; }
   .conv-msg.whatsapp .label.wa { color: #25D366; }
   .comms-status.scanning { background: rgba(210,153,34,0.12); color: #d29922; }
@@ -666,13 +811,15 @@
 <body>
 <div class="header">
   <div class="header-left">
-    <h1>{{AGENT_NAME}}</h1>
+    <div class="header-logo" id="headerLogo"></div>
+    <h1>Gitclaw: {{AGENT_NAME}}</h1>
     <button class="chat-sidebar-toggle" id="chatSidebarToggle" onclick="toggleChatSidebar()" title="Toggle chat list">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
     </button>
     <div class="view-tabs">
       <button class="view-tab active" id="tabChat" onclick="switchView('chat')">Chat</button>
       <!-- <button class="view-tab" id="tabFiles" onclick="switchView('files')">Files</button> -->
+      <button class="view-tab" id="tabSkills" onclick="switchView('skills')">Skills</button>
       <button class="view-tab" id="tabIntegrations" onclick="switchView('integrations')">Integrations</button>
       <button class="view-tab" id="tabComms" onclick="switchView('comms')">Communication</button>
     </div>
@@ -724,6 +871,39 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
           Mic
         </button>
+      </div>
+      <div class="agent-vitals" id="agentVitals">
+        <div class="vitals-header">
+          <span class="vitals-title">Agent Vitals</span>
+          <span class="vitals-status-dot" id="vitalsDot"></span>
+        </div>
+        <div class="vitals-grid">
+          <div class="vital-cell cpu">
+            <span class="vital-label">CPU</span>
+            <span class="vital-value" id="vitalCpu">0<span class="vital-unit">%</span></span>
+            <div class="vital-bar"><div class="vital-bar-fill" id="vitalCpuBar" style="width:0%"></div></div>
+          </div>
+          <div class="vital-cell mem">
+            <span class="vital-label">Memory</span>
+            <span class="vital-value" id="vitalMem">0<span class="vital-unit">MB</span></span>
+            <div class="vital-bar"><div class="vital-bar-fill" id="vitalMemBar" style="width:0%"></div></div>
+          </div>
+          <div class="vital-cell tokens">
+            <span class="vital-label">Tokens</span>
+            <span class="vital-value" id="vitalTokens">0<span class="vital-unit">tok</span></span>
+            <div class="vital-bar"><div class="vital-bar-fill" id="vitalTokensBar" style="width:0%"></div></div>
+          </div>
+          <div class="vital-cell uptime">
+            <span class="vital-label">Uptime</span>
+            <span class="vital-value" id="vitalUptime">00:00</span>
+          </div>
+          <div class="vital-cell wide">
+            <div class="vitals-wave">
+              <span class="vitals-wave-label">Pulse</span>
+              <canvas id="vitalsWaveCanvas"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="panel-right">
@@ -812,7 +992,7 @@
       <span class="comms-subtitle">Connect messaging channels so your agent can send and receive messages</span>
     </div>
     <div class="comms-content">
-      <div class="comms-card" id="telegramCard">
+      <div class="comms-card telegram" id="telegramCard">
         <div class="comms-card-top">
           <div class="comms-card-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.02 1.28-5.69 3.77-.54.37-1.03.55-1.47.54-.48-.01-1.41-.27-2.1-.5-.85-.28-1.52-.43-1.46-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.47-.01.06.01.24 0 .37z"/></svg>
@@ -851,7 +1031,7 @@
       </div>
 
       <!-- WhatsApp Card -->
-      <div class="comms-card" id="whatsappCard">
+      <div class="comms-card whatsapp" id="whatsappCard">
         <div class="comms-card-top">
           <div class="comms-card-icon whatsapp">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -875,25 +1055,74 @@
           <button class="tk-btn connect" id="waConnectBtn" onclick="toggleWhatsApp()">Connect</button>
         </div>
       </div>
+
+      <!-- Phone Number / Twilio Card -->
+      <div class="comms-card phone" id="phoneCard">
+        <div class="comms-card-top">
+          <div class="comms-card-icon phone">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+          </div>
+          <div class="comms-card-info">
+            <span class="comms-card-name">Phone Number</span>
+            <span class="comms-card-desc">Receive SMS via Twilio webhook — set this URL in your Twilio phone number config</span>
+          </div>
+        </div>
+        <div class="comms-card-config">
+          <div class="phone-url-box">
+            <code id="phoneWebhookUrl"></code>
+            <button class="copy-btn" onclick="copyWebhookUrl(this)">Copy</button>
+          </div>
+          <span style="font-size:10px; color:#484f58; margin-top:4px; display:block;">
+            Paste this URL in Twilio &rarr; Phone Numbers &rarr; your number &rarr; Messaging &rarr; "A message comes in" webhook
+          </span>
+        </div>
+      </div>
     </div>
+  </div>
+  <div class="skills-view hidden" id="skillsView" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <iframe id="skillsFrame" src="" style="flex:1;border:none;background:#0d1117;width:100%;"></iframe>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <!-- <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script> -->
 <script>
-let currentView='chat',filesLoaded=false,integrationsLoaded=false,commsLoaded=false;
+var hasComposio={{HAS_COMPOSIO}};
+if(!hasComposio){document.getElementById('tabIntegrations').style.display='none';}
+let currentView='chat',filesLoaded=false,integrationsLoaded=false,commsLoaded=false,skillsLoaded=false;
 function switchView(v){
   currentView=v;
   document.getElementById('chatView').classList.toggle('hidden',v!=='chat');
   document.getElementById('integrationsView').classList.toggle('hidden',v!=='integrations');
   document.getElementById('commsView').classList.toggle('hidden',v!=='comms');
+  document.getElementById('skillsView').classList.toggle('hidden',v!=='skills');
   document.getElementById('tabChat').classList.toggle('active',v==='chat');
   document.getElementById('tabIntegrations').classList.toggle('active',v==='integrations');
   document.getElementById('tabComms').classList.toggle('active',v==='comms');
+  document.getElementById('tabSkills').classList.toggle('active',v==='skills');
   if(v==='integrations'&&!integrationsLoaded){loadToolkits();integrationsLoaded=true;}
-  if(v==='comms'&&!commsLoaded){loadTelegramStatus();loadWhatsAppStatus();commsLoaded=true;}
+  if(v==='comms'&&!commsLoaded){loadTelegramStatus();loadWhatsAppStatus();loadPhoneWebhookUrl();commsLoaded=true;}
+  if(v==='skills'&&!skillsLoaded){document.getElementById('skillsFrame').src='/api/skills-mp/proxy?path=/';skillsLoaded=true;}
 }
+// Skills MP install handler
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='install_skill')return;
+  var source=e.data.source;
+  if(!source)return;
+  fetch('/api/skills-mp/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:source})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        alert('Installed');
+        // Notify the iframe that install succeeded
+        var frame=document.getElementById('skillsFrame');
+        if(frame&&frame.contentWindow)frame.contentWindow.postMessage({type:'install_success',source:source},'*');
+      } else {
+        alert('Install failed: '+(d.error||'Unknown error'));
+      }
+    })
+    .catch(function(err){alert('Install failed: '+err.message);});
+});
 
 /* FILES/MONACO DISABLED
 let monacoEditor=null,monacoReady=false;
@@ -937,7 +1166,141 @@ function appendConv(h,c){var d=document.createElement('div');d.className='conv-m
 function connectWS(){if(ws)return;setStatus('Connecting...','');ws=new WebSocket('ws://'+window.location.host);ws.onopen=function(){setStatus('Connected','connected');};ws.onmessage=function(e){try{handleServerMessage(JSON.parse(e.data));}catch(x){}};ws.onerror=function(){setStatus('Connection error','error');};ws.onclose=function(){ws=null;setStatus('Disconnected','');stopMic();stopCamera();stopScreen();};}
 function sendMsg(m){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
 
-var assistantText='',thinkingEl=null;
+// Agent Vitals
+var vitalsStart=Date.now(), vitalsTokenCount=0, vitalsMaxTokens=200000;
+var waveData=[], waveCanvas=document.getElementById('vitalsWaveCanvas'), waveCtx=waveCanvas?waveCanvas.getContext('2d'):null;
+
+function updateUptime(){
+  var s=Math.floor((Date.now()-vitalsStart)/1000);
+  var h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  var el=document.getElementById('vitalUptime');
+  if(el) el.innerHTML=(h>0?(h+':'):'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+}
+setInterval(updateUptime,1000);
+
+function updateVitalTokens(count){
+  vitalsTokenCount=count;
+  var el=document.getElementById('vitalTokens');
+  var bar=document.getElementById('vitalTokensBar');
+  if(el){
+    var display=count>=1000?(Math.round(count/100)/10)+'k':count;
+    el.innerHTML=display+'<span class="vital-unit">tok</span>';
+  }
+  if(bar) bar.style.width=Math.min(100,Math.round(count/vitalsMaxTokens*100))+'%';
+}
+
+function pollSystemVitals(){
+  fetch('/api/vitals').then(function(r){return r.json();}).then(function(d){
+    var cpuEl=document.getElementById('vitalCpu'), cpuBar=document.getElementById('vitalCpuBar');
+    var memEl=document.getElementById('vitalMem'), memBar=document.getElementById('vitalMemBar');
+    if(cpuEl&&d.cpu!==undefined){cpuEl.innerHTML=Math.round(d.cpu)+'<span class="vital-unit">%</span>';if(cpuBar)cpuBar.style.width=Math.round(d.cpu)+'%';}
+    if(memEl&&d.mem!==undefined){
+      var mb=Math.round(d.mem);
+      var display=mb>=1024?(Math.round(mb/102.4)/10)+'GB':mb+'MB';
+      var unit=mb>=1024?'':'MB';
+      memEl.innerHTML=display.replace(/[A-Z]+$/,'')+'<span class="vital-unit">'+display.replace(/^[\d.]+/,'')+'</span>';
+      if(memBar)memBar.style.width=Math.min(100,Math.round(mb/4096*100))+'%';
+    }
+    if(d.tokens!==undefined) updateVitalTokens(d.tokens);
+    // Push to wave
+    waveData.push(d.cpu||0);
+    if(waveData.length>60) waveData.shift();
+  }).catch(function(){});
+}
+setInterval(pollSystemVitals,2000);
+pollSystemVitals();
+
+function drawWave(){
+  if(!waveCanvas||!waveCtx) return;
+  var w=waveCanvas.width=waveCanvas.offsetWidth*2, h=waveCanvas.height=waveCanvas.offsetHeight*2;
+  waveCtx.clearRect(0,0,w,h);
+  if(waveData.length<2){requestAnimationFrame(drawWave);return;}
+  waveCtx.strokeStyle='#f85149'; waveCtx.lineWidth=1.5; waveCtx.shadowColor='#f85149'; waveCtx.shadowBlur=4;
+  waveCtx.beginPath();
+  var step=w/(waveData.length-1);
+  for(var i=0;i<waveData.length;i++){
+    var val=waveData[i]/100;
+    var y=h-val*(h-4)-2;
+    if(i===0)waveCtx.moveTo(0,y);else{
+      var px=(i-1)*step,py=h-(waveData[i-1]/100)*(h-4)-2;
+      var cx=(px+i*step)/2;
+      waveCtx.bezierCurveTo(cx,py,cx,y,i*step,y);
+    }
+  }
+  waveCtx.stroke();
+  // Glow line
+  waveCtx.shadowBlur=0; waveCtx.strokeStyle='rgba(248,81,73,0.15)'; waveCtx.lineWidth=6;
+  waveCtx.beginPath();
+  for(var i=0;i<waveData.length;i++){
+    var val=waveData[i]/100;var y=h-val*(h-4)-2;
+    if(i===0)waveCtx.moveTo(0,y);else{
+      var px=(i-1)*step,py=h-(waveData[i-1]/100)*(h-4)-2;
+      var cx=(px+i*step)/2;
+      waveCtx.bezierCurveTo(cx,py,cx,y,i*step,y);
+    }
+  }
+  waveCtx.stroke();
+  requestAnimationFrame(drawWave);
+}
+requestAnimationFrame(drawWave);
+
+var assistantText='',thinkingEl=null,toolActivityEl=null,toolCount=0,isReplay=false,toolVerb='';
+var toolVerbs=['susurrating','skulking','slithering','shuffling','skimming','scudding','swishing','sparkling','twinkling','glowing','shimmering','murmuring','lilting','drifting','billowing','meandering','hovering','skirling','thrumming','wending','gadding','loitering','brooding','looming','haunting','seething','flickering','glimmering','whispering','rustling','eddying','trembling','quivering','wavering','gliding','cascading','rippling','tumbling','stirring','wandering'];
+var spriteMap=[
+  [0,0,1,1,1,1,1,1,0,0],[0,1,2,2,2,2,2,2,1,0],[1,2,2,2,2,2,2,2,2,1],
+  [1,2,1,2,2,2,2,1,2,1],[1,2,1,2,2,2,2,1,2,1],[1,2,2,2,2,2,2,2,2,1],
+  [1,2,2,2,2,2,2,2,2,1],[0,1,2,2,2,2,2,2,1,0],[1,2,2,1,2,2,1,2,2,1],[0,1,1,0,1,1,0,1,1,0]
+];
+function buildSprite(){
+  var s=document.createElement('div');s.className='tool-sprite';
+  spriteMap.flat().forEach(function(v){var p=document.createElement('div');p.className='px '+(v===1?'px-o':v===2?'px-f':'px-e');s.appendChild(p);});
+  return s;
+}
+(function(){var el=document.getElementById('headerLogo');if(el)spriteMap.flat().forEach(function(v){var p=document.createElement('div');p.className='px '+(v===1?'px-o':v===2?'px-f':'px-e');el.appendChild(p);});})();
+function getToolActivity(){
+  if(!toolActivityEl){
+    toolActivityEl=document.createElement('div');
+    toolActivityEl.className='conv-msg tool-activity';
+    toolVerb=toolVerbs[Math.floor(Math.random()*toolVerbs.length)];
+    var sprite=buildSprite();
+    var verb=document.createElement('span');verb.className='tool-verb';verb.textContent='< '+toolVerb+'... >';
+    var body=document.createElement('div');body.className='tool-activity-body';
+    var sum=document.createElement('div');sum.className='tool-activity-summary';sum.style.display='none';
+    toolActivityEl.appendChild(sprite);
+    toolActivityEl.appendChild(verb);
+    toolActivityEl.appendChild(body);
+    toolActivityEl.appendChild(sum);
+    conv.appendChild(toolActivityEl);
+    toolCount=0;
+  }
+  return toolActivityEl;
+}
+function collapseToolActivity(){
+  if(toolActivityEl&&toolCount>0){
+    var el=toolActivityEl;
+    var body=el.querySelector('.tool-activity-body');
+    var sprite=el.querySelector('.tool-sprite');
+    var verb=el.querySelector('.tool-verb');
+    var sum=el.querySelector('.tool-activity-summary');
+    var tc=toolCount;
+    body.style.display='none';
+    if(sprite)sprite.style.display='none';
+    if(verb)verb.style.display='none';
+    sum.style.display='';
+    sum.innerHTML='<span class="tool-summary-toggle">▸ Used '+tc+' tool'+(tc!==1?'s':'')+'</span>';
+    if(!isReplay) sum.style.animation='toolSummaryIn 0.2s ease-out';
+    el.style.height='auto';
+    sum.onclick=function(){
+      var isHidden=body.style.display==='none';
+      body.style.display=isHidden?'':'none';
+      el.classList.toggle('expanded',isHidden);
+      sum.querySelector('.tool-summary-toggle').textContent=(isHidden?'▾':'▸')+' Used '+tc+' tool'+(tc!==1?'s':'');
+    };
+  }
+  toolActivityEl=null;
+  toolCount=0;
+  toolVerb='';
+}
 function handleServerMessage(m){switch(m.type){
   case'audio_delta':playAudioDelta(m.audio);break;
   case'interrupt':flushAudio();break;
@@ -949,21 +1312,38 @@ function handleServerMessage(m){switch(m.type){
       var cleanText=isTg?m.text.replace(/^\[Telegram\]\s*/,''):isWa?m.text.replace(/^\[WhatsApp\]:\s*/,''):m.text;
       appendConv(label+escHtml(cleanText),isTg?'user telegram':isWa?'user whatsapp':'user');
     }
-    else if(m.role==='assistant'){if(m.partial)assistantText+=m.text;else{if(assistantText){appendConv('<span class="label">Assistant: </span>'+escHtml(assistantText),'assistant');assistantText='';}else appendConv('<span class="label">Assistant: </span>'+escHtml(m.text),'assistant');}}
+    else if(m.role==='assistant'){if(m.partial)assistantText+=m.text;else{collapseToolActivity();if(assistantText){appendConv('<span class="label">{{AGENT_NAME}}: </span>'+escHtml(assistantText),'assistant');assistantText='';}else appendConv('<span class="label">{{AGENT_NAME}}: </span>'+escHtml(m.text),'assistant');}}
     break;
   case'agent_working':
-    appendConv('<span class="label">Agent: </span>'+escHtml(m.query),'tool');
+    var awVerb=toolVerbs[Math.floor(Math.random()*toolVerbs.length)];
+    var awEl=document.createElement('div');awEl.className='conv-msg agent-working';
+    var awSpinner=document.createElement('div');awSpinner.className='agent-working-spinner';awEl.appendChild(awSpinner);
+    var awText=document.createElement('span');awText.className='agent-working-text';
+    awText.innerHTML='<span class="agent-working-name">gitclaw</span> <span class="agent-working-verb">&lt; '+escHtml(awVerb)+'... &gt;</span> <span class="agent-working-sep">:</span> <span class="agent-working-query">'+escHtml(m.query)+'</span>';
+    awEl.appendChild(awText);
+    conv.appendChild(awEl);conv.scrollTop=conv.scrollHeight;
     setStatus('Agent working...','connected');break;
   case'agent_done':
     thinkingEl=null;
+    collapseToolActivity();
+    conv.querySelectorAll('.conv-msg.agent-working').forEach(function(el){el.remove();});
     setStatus('Connected','connected');
     if(filesLoaded)loadFileTree();
     refreshFileTree();break;
   case'tool_call':
     thinkingEl=null;
-    var argsStr=JSON.stringify(m.args,null,2);
-    var argsPreview=argsStr.length>200?argsStr.slice(0,200)+'...':argsStr;
-    appendConv('<span class="label">Tool: </span>'+escHtml(m.toolName)+'<div class="tool-args">'+escHtml(argsPreview)+'</div>','tool-call');
+    toolCount++;
+    if(isReplay){
+      var ta=getToolActivity();
+      var cur=ta.querySelector('.tool-activity-body');
+      cur.innerHTML='<span class="tool-call">'+friendlyToolCall(m.toolName,m.args)+'</span>';
+    } else {
+      var ta=getToolActivity();
+      var cur=ta.querySelector('.tool-activity-body');
+      cur.innerHTML='<span class="tool-call">'+friendlyToolCall(m.toolName,m.args)+'</span>';
+      cur.style.display='';
+      conv.scrollTop=conv.scrollHeight;
+    }
     // In audit mode, track which file the agent is about to write
     if(auditMode){
       var writePath=detectFileWritePath(m.toolName,m.args);
@@ -971,10 +1351,14 @@ function handleServerMessage(m){switch(m.type){
     }
     break;
   case'tool_result':
-    var cls='tool-result'+(m.isError?' error':'');
-    var lbl=m.isError?'Error: ':'Result: ';
-    var preview=m.content.length>300?m.content.slice(0,300)+'...':m.content;
-    appendConv('<span class="label">'+escHtml(m.toolName)+' '+lbl+'</span><div class="tool-content">'+escHtml(preview)+'</div>',cls);
+    var ta2=getToolActivity();
+    var cur2=ta2.querySelector('.tool-activity-body');
+    if(m.isError){
+      cur2.innerHTML='<span class="tool-result thinking-fallback"><span class="label">thinking...</span></span>';
+    } else {
+      cur2.innerHTML='<span class="tool-result">'+friendlyToolResult(m.toolName,m.content,false)+'</span>';
+    }
+    if(!isReplay)conv.scrollTop=conv.scrollHeight;
     // In audit mode, auto-open the file that was just written
     if(auditMode&&lastToolWritePath&&!m.isError){
       var autoPath=lastToolWritePath;
@@ -991,6 +1375,172 @@ function handleServerMessage(m){switch(m.type){
   case'error':appendConv('Error: '+escHtml(m.message),'system');break;
 }}
 function escHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+// Parse composio tool names like "composio_googlecalendar_GOOGLECALENDAR_EVENTS_LIST" into friendly text
+function parseComposioName(name){
+  var raw=name.replace(/^composio_/,'');
+  // Split on first underscore to get service, then action
+  var parts=raw.split('_');
+  var service=parts[0].toLowerCase();
+  // The action is everything after the service prefix (which repeats)
+  // e.g. "googlecalendar_GOOGLECALENDAR_EVENTS_LIST" → action = "EVENTS_LIST"
+  var actionRaw=raw.replace(new RegExp('^[^_]+_'+service+'_?','i'),'');
+  if(!actionRaw) actionRaw=parts.slice(1).join('_');
+  var action=actionRaw.toLowerCase().replace(/_/g,' ');
+  // Friendly service names
+  var services={google:'Google',googlecalendar:'Google Calendar',gmail:'Gmail',
+    github:'GitHub',slack:'Slack',notion:'Notion',drive:'Google Drive',
+    googledrive:'Google Drive',sheets:'Google Sheets',googlesheets:'Google Sheets',
+    outlook:'Outlook',discord:'Discord',trello:'Trello',linear:'Linear',
+    jira:'Jira',asana:'Asana',hubspot:'HubSpot',salesforce:'Salesforce',
+    spotify:'Spotify',twitter:'Twitter',youtube:'YouTube'};
+  var friendlyService=services[service]||service.charAt(0).toUpperCase()+service.slice(1);
+  // Friendly action verbs
+  var actionMap={
+    'events list':'checking events','find event':'finding event','create event':'creating event',
+    'delete event':'deleting event','update event':'updating event','quick add':'adding event',
+    'send email':'sending email','create email draft':'drafting email',
+    'list emails':'checking emails','get email':'reading email','fetch emails':'checking emails',
+    'list messages':'checking messages','send message':'sending message',
+    'get message':'reading message','search messages':'searching messages',
+    'list labels':'checking labels','get profile':'checking profile',
+    'list repos':'checking repos','create issue':'creating issue',
+    'list issues':'checking issues','get repo':'checking repo',
+    'create pr':'creating pull request','list prs':'checking pull requests',
+    'search contacts':'searching contacts','list contacts':'checking contacts',
+    'find contact':'finding contact','get contact':'looking up contact',
+  };
+  var friendlyAction=actionMap[action]||action;
+  return {service:friendlyService,action:friendlyAction};
+}
+
+// Summarize composio args into a short human string
+function summarizeArgs(args){
+  var a=args||{};
+  var parts=[];
+  // Calendar
+  if(a.calendarId&&a.calendarId!=='primary') parts.push(a.calendarId);
+  if(a.summary) parts.push('"'+a.summary+'"');
+  if(a.query||a.q) parts.push('"'+(a.query||a.q)+'"');
+  // Email
+  if(a.to||a.recipient) parts.push('to '+(a.to||a.recipient));
+  if(a.subject) parts.push('"'+a.subject+'"');
+  // General
+  if(a.name&&!a.phone) parts.push(a.name);
+  if(a.message&&!a.to) parts.push('"'+a.message.slice(0,60)+'"');
+  if(a.owner&&a.repo) parts.push(a.owner+'/'+a.repo);
+  if(a.channel) parts.push('#'+a.channel);
+  return parts.length?parts.join(', '):'';
+}
+
+// Parse composio JSON result into something readable
+function summarizeResult(name,content){
+  try{
+    var d=JSON.parse(content);
+    var data=d.data||d;
+    // Calendar events
+    if(data.items&&Array.isArray(data.items)){
+      if(data.items.length===0) return 'No events found';
+      var evts=data.items.slice(0,5).map(function(e){
+        var when='';
+        if(e.start){
+          var dt=e.start.dateTime||e.start.date||'';
+          if(dt){try{var dd=new Date(dt);when=' ('+dd.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+', '+dd.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+')';}catch(x){}}
+        }
+        return (e.summary||'Untitled')+when;
+      });
+      var more=data.items.length>5?' and '+(data.items.length-5)+' more':'';
+      return 'Found '+data.items.length+' event'+(data.items.length!==1?'s':'')+':\n'+evts.join('\n')+more;
+    }
+    // Email list
+    if(data.messages&&Array.isArray(data.messages)){
+      if(data.messages.length===0) return 'No messages found';
+      return 'Found '+data.messages.length+' message'+(data.messages.length!==1?'s':'');
+    }
+    // Single email/event
+    if(data.summary&&data.start) return 'Event: '+data.summary;
+    if(data.subject) return (data.from?'From '+data.from+': ':'')+data.subject;
+    // Contact
+    if(data.emailAddress||data.email) return (data.displayName||data.name||'Contact')+' — '+(data.emailAddress||data.email);
+    if(Array.isArray(data)&&data.length>0&&data[0].emailAddress) return data.map(function(c){return (c.displayName||c.name||'?')+' <'+(c.emailAddress||c.email)+'>';}).slice(0,5).join('\n');
+    // GitHub
+    if(data.full_name&&data.html_url) return data.full_name;
+    if(data.title&&data.number) return '#'+data.number+' '+data.title;
+    // Generic success
+    if(d.successful===true){
+      if(data.id||data.htmlLink) return 'Done';
+      if(typeof data==='string') return data.slice(0,200);
+    }
+    if(d.successful===false) return 'Failed: '+(d.error||'unknown error');
+  }catch(e){}
+  return null; // couldn't parse, use fallback
+}
+
+function friendlyToolCall(name,args){
+  var a=args||{};
+  switch(name){
+    case'send_whatsapp_message':
+      return '<span class="label">Sending WhatsApp to '+escHtml(a.to||'?')+':</span> '+escHtml(a.message||'');
+    case'save_whatsapp_contact':
+      return '<span class="label">Saving contact:</span> '+escHtml(a.name||'?')+' ('+escHtml(a.phone||'?')+')';
+    case'list_whatsapp_contacts':
+      return '<span class="label">Looking up contacts...</span>';
+    case'create_trigger':
+      return '<span class="label">Creating trigger:</span> when '+escHtml(a.from||'anyone')+' says "'+escHtml(a.pattern||'')+'" &rarr; reply "'+escHtml(a.reply||'')+'"';
+    case'list_triggers':
+      return '<span class="label">Checking triggers...</span>';
+    case'delete_trigger':
+      return '<span class="label">Deleting trigger</span> '+escHtml(a.id||'');
+    case'toggle_trigger':
+      return '<span class="label">'+(a.enabled?'Enabling':'Disabling')+' trigger</span> '+escHtml(a.id||'');
+    default:
+      if(name.startsWith('composio_')){
+        var p=parseComposioName(name);
+        var detail=summarizeArgs(a);
+        return '<span class="label">'+escHtml(p.service)+':</span> '+escHtml(p.action)+(detail?' &mdash; '+escHtml(detail):'');
+      }
+      // Detect skill usage from file reads/globs targeting skills/ directory
+      var skillPath=a.file_path||a.path||a.command||'';
+      var skillMatch=skillPath.match(/skills\/([^\/]+)/);
+      if(skillMatch){
+        var skillName=skillMatch[1];
+        return '<span class="label skill-label">Using skill:</span> <span class="skill-name">'+escHtml('skills/'+skillName)+'</span>';
+      }
+      var argsStr=JSON.stringify(a);
+      var preview=argsStr.length>120?argsStr.slice(0,120)+'...':argsStr;
+      return '<span class="label">'+escHtml(name)+'</span><span class="tool-args">'+escHtml(preview)+'</span>';
+  }
+}
+
+function friendlyToolResult(name,content,isError){
+  if(isError) return '<span class="label" style="color:#f85149">Failed: </span>'+escHtml(content.slice(0,200));
+  switch(name){
+    case'send_whatsapp_message':
+    case'save_whatsapp_contact':
+      return '<span class="label" style="color:#3fb950">&#10003;</span> '+escHtml(content);
+    case'list_whatsapp_contacts':
+      if(content.startsWith('No saved')) return '<span class="label">No contacts saved yet</span>';
+      return '<span class="label">Contacts:</span><div class="tool-content">'+escHtml(content)+'</div>';
+    case'create_trigger':
+      return '<span class="label" style="color:#3fb950">&#10003; Trigger set up</span>';
+    case'list_triggers':
+      if(content.startsWith('No triggers')) return '<span class="label">No triggers set up</span>';
+      return '<span class="label">Triggers:</span><div class="tool-content">'+escHtml(content)+'</div>';
+    case'delete_trigger':
+    case'toggle_trigger':
+      return '<span class="label" style="color:#3fb950">&#10003;</span> '+escHtml(content);
+    default:
+      if(name.startsWith('composio_')){
+        var friendly=summarizeResult(name,content);
+        if(friendly) return '<span class="label" style="color:#3fb950">&#10003;</span> '+escHtml(friendly).replace(/\n/g,'<br>');
+        // Fallback: just show success/truncated
+        var preview=content.length>200?content.slice(0,200)+'...':content;
+        return '<span class="label" style="color:#3fb950">&#10003;</span> Done';
+      }
+      var preview=content.length>300?content.slice(0,300)+'...':content;
+      return '<span class="label">'+escHtml(name)+':</span><div class="tool-content">'+escHtml(preview)+'</div>';
+  }
+}
 
 var audioQueue=[],isPlaying=false,currentSource=null,nextPlayTime=0;
 function flushAudio(){if(currentSource){try{currentSource.stop();}catch(e){}}currentSource=null;audioQueue=[];nextPlayTime=0;isPlaying=false;}
@@ -1220,7 +1770,10 @@ async function restoreChatHistory(branch){
   try{
     var r=await fetch('/api/chat/history?branch='+encodeURIComponent(branch));
     var d=await r.json();
+    isReplay=true;
     if(d.messages)d.messages.forEach(function(m){handleServerMessage(m);});
+    collapseToolActivity();
+    isReplay=false;
   }catch(e){}
 }
 
@@ -1545,6 +2098,22 @@ async function toggleWhatsApp(){
   // Poll for QR code / connection
   waQrPollTimer=setInterval(function(){loadWhatsAppStatus();},2000);
   setTimeout(function(){loadWhatsAppStatus();},500);
+}
+
+// ── PHONE / TWILIO ──────────────────────────────────────────────────
+function loadPhoneWebhookUrl(){
+  var el=document.getElementById('phoneWebhookUrl');
+  if(!el) return;
+  var base=window.location.origin;
+  el.textContent=base+'/api/phone/webhook';
+}
+function copyWebhookUrl(btn){
+  var url=document.getElementById('phoneWebhookUrl').textContent;
+  navigator.clipboard.writeText(url).then(function(){
+    btn.textContent='Copied!';
+    btn.classList.add('copied');
+    setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
+  });
 }
 
 // ── AUDIT MODE & FILE EXPLORER ──────────────────────────────────────

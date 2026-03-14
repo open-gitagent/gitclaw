@@ -58,6 +58,7 @@ function isMomentWorthy(text: string): boolean {
 	return MOMENT_PATTERNS.some((p) => p.test(text));
 }
 
+let vitalsTokenCount = 0;
 const PHOTOS_DIR = "memory/photos";
 const INDEX_FILE = "memory/photos/INDEX.md";
 const LATEST_FRAME_FILE = "memory/.latest-frame.jpg";
@@ -354,7 +355,9 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 		const m = yamlRaw.match(/^name:\s*(.+)$/m);
 		if (m) agentName = m[1].trim();
 	} catch { /* fallback to default */ }
-	const uiHtml = loadUIHtml().replace(/\{\{AGENT_NAME\}\}/g, agentName);
+	const uiHtml = loadUIHtml()
+		.replace(/\{\{AGENT_NAME\}\}/g, agentName)
+		.replace(/\{\{HAS_COMPOSIO\}\}/g, process.env.COMPOSIO_API_KEY ? "true" : "false");
 
 	// Current date/time context injected into every query
 	function getCurrentDateTimeContext(): string {
@@ -418,6 +421,7 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 			const { tools: composioTools, promptSuffix: composioPromptSuffix } = await getComposioContext(prompt);
 
 			let systemPromptSuffix = getCurrentDateTimeContext();
+			systemPromptSuffix += "\nIMPORTANT: All files you create (PDFs, images, documents, code output, etc.) MUST be written to the workspace/ directory. Never write to the project root or other locations.";
 			if (whatsappSock && whatsappConnected) {
 				systemPromptSuffix += "\nYou can send WhatsApp messages using the send_whatsapp_message tool and set up auto-response triggers using create_trigger.";
 			} else {
@@ -452,12 +456,13 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 			for await (const msg of result) {
 				if (msg.type === "assistant" && msg.content) {
 					text += msg.content;
+					vitalsTokenCount += Math.ceil(msg.content.length / 4);
 				} else if (msg.type === "tool_use") {
 					sendToBrowser({ type: "tool_call", toolName: msg.toolName, args: msg.args });
 					console.log(dim(`[voice] Tool call: ${msg.toolName}(${JSON.stringify(msg.args).slice(0, 80)})`));
 				} else if (msg.type === "tool_result") {
 					sendToBrowser({ type: "tool_result", toolName: msg.toolName, content: msg.content, isError: msg.isError });
-					if (msg.content) toolResults.push(msg.content);
+					if (msg.content) { toolResults.push(msg.content); vitalsTokenCount += Math.ceil(msg.content.length / 4); }
 					console.log(dim(`[voice] Tool ${msg.toolName}: ${msg.content.slice(0, 100)}${msg.content.length > 100 ? "..." : ""}`));
 				} else if (msg.type === "system" && msg.subtype === "error") {
 					errors.push(msg.content);
@@ -1397,6 +1402,10 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 		res.end(JSON.stringify(data));
 	}
 
+	function escapeXml(s: string): string {
+		return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+	}
+
 	// HTTP server
 	const httpServer: Server = createServer(async (req, res) => {
 		res.setHeader("Access-Control-Allow-Origin", "*");
@@ -1412,6 +1421,19 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 
 		if (url.pathname === "/health") {
 			jsonReply(res, 200, { status: "ok" });
+
+		} else if (url.pathname === "/api/vitals") {
+			const mem = process.memoryUsage();
+			const cpuUsage = process.cpuUsage();
+			const cpuPercent = Math.min(100, Math.round((cpuUsage.user + cpuUsage.system) / 1000 / (process.uptime() * 10000)));
+			jsonReply(res, 200, {
+				cpu: cpuPercent,
+				mem: Math.round(mem.rss / 1024 / 1024),
+				heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+				heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+				uptime: Math.round(process.uptime()),
+				tokens: vitalsTokenCount,
+			});
 
 		} else if (url.pathname === "/" || url.pathname === "/test") {
 			res.writeHead(200, { "Content-Type": "text/html" });
@@ -1607,6 +1629,88 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 		} else if (url.pathname === "/api/whatsapp/qr" && req.method === "GET") {
 			jsonReply(res, 200, { qrCode: whatsappQrCode, connected: whatsappConnected });
 
+		// ── Phone / Twilio webhook ──────────────────────────────────────
+		} else if (url.pathname === "/api/phone/webhook" && req.method === "POST") {
+			// Twilio sends SMS/voice webhooks here as application/x-www-form-urlencoded
+			const body = await readBody(req);
+			const params = new URLSearchParams(body);
+			const from = params.get("From") || "";
+			const smsBody = params.get("Body") || "";
+			const callStatus = params.get("CallStatus") || "";
+
+			if (smsBody) {
+				// Incoming SMS
+				console.log(dim(`[phone] SMS from ${from}: ${smsBody.slice(0, 100)}`));
+				const userMsg: ServerMessage = { type: "transcript", role: "user", text: `[SMS ${from}]: ${smsBody}` };
+				appendMessage(opts.agentDir, activeBranch, userMsg);
+				broadcastToBrowsers(userMsg);
+
+				// Check triggers
+				const senderName = from.replace(/[^0-9]/g, "");
+				const contact = loadContacts(opts.agentDir).find(c => c.phone === senderName || from.includes(c.phone));
+				const trigger = matchTrigger(opts.agentDir, "phone", contact?.name || from, smsBody);
+
+				if (trigger) {
+					console.log(dim(`[triggers] Phone trigger ${trigger.id}: "${smsBody.slice(0, 40)}" → "${trigger.reply.slice(0, 40)}"`));
+					// Reply with TwiML
+					res.writeHead(200, { "Content-Type": "text/xml" });
+					res.end(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(trigger.reply)}</Message></Response>`);
+					const triggerLog: ServerMessage = { type: "transcript", role: "assistant", text: `[Trigger → ${from}]: ${trigger.reply}` };
+					appendMessage(opts.agentDir, activeBranch, triggerLog);
+					broadcastToBrowsers(triggerLog);
+					return;
+				}
+
+				// Run agent for non-triggered messages
+				try {
+					const phoneContext = await getAgentContext(opts.agentDir, activeBranch);
+					const phoneComposio = await getComposioContext(smsBody);
+					let phoneSystemPrompt = "You are an AI assistant responding to an SMS message via Twilio. " +
+						"Keep responses concise — SMS has character limits. Respond in plain text only.";
+					phoneSystemPrompt += "\n\n" + getCurrentDateTimeContext();
+					if (phoneComposio.promptSuffix) phoneSystemPrompt += "\n\n" + phoneComposio.promptSuffix;
+					if (phoneContext) phoneSystemPrompt += "\n\n" + phoneContext;
+					const phoneTools = [
+						...createTriggerTools(opts.agentDir),
+						...(whatsappSock && whatsappConnected ? createWhatsAppTools(whatsappSock, opts.agentDir) : []),
+						...phoneComposio.tools,
+					];
+					const result = query({
+						prompt: `[SMS from ${from}]: ${smsBody}`,
+						dir: opts.agentDir,
+						model: opts.model,
+						env: opts.env,
+						maxTurns: 5,
+						systemPrompt: phoneSystemPrompt,
+						...(phoneTools.length ? { tools: phoneTools } : {}),
+					});
+					let reply = "";
+					for await (const m of result) {
+						if (m.type === "assistant" && m.content) reply += m.content;
+					}
+					reply = reply.trim().slice(0, 1600); // SMS limit
+
+					const assistantMsg: ServerMessage = { type: "transcript", role: "assistant", text: `[SMS → ${from}]: ${reply}` };
+					appendMessage(opts.agentDir, activeBranch, assistantMsg);
+					broadcastToBrowsers(assistantMsg);
+
+					res.writeHead(200, { "Content-Type": "text/xml" });
+					res.end(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(reply)}</Message></Response>`);
+				} catch (err: any) {
+					console.error(dim(`[phone] Agent error: ${err.message}`));
+					res.writeHead(200, { "Content-Type": "text/xml" });
+					res.end(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Sorry, something went wrong.</Message></Response>`);
+				}
+			} else if (callStatus) {
+				// Voice call webhook — just acknowledge for now
+				console.log(dim(`[phone] Call from ${from}, status: ${callStatus}`));
+				res.writeHead(200, { "Content-Type": "text/xml" });
+				res.end(`<?xml version="1.0" encoding="UTF-8"?><Response><Say>This number is managed by ${agentName}. Please send a text message instead.</Say></Response>`);
+			} else {
+				res.writeHead(200, { "Content-Type": "text/xml" });
+				res.end(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+			}
+
 		// ── Composio OAuth callback ─────────────────────────────────────
 		} else if (url.pathname === "/api/composio/callback") {
 			// OAuth popup lands here after Composio processes the auth code.
@@ -1745,6 +1849,276 @@ export async function startVoiceServer(opts: VoiceServerOptions): Promise<() => 
 				jsonReply(res, 200, { ok: true });
 			} catch (err: any) {
 				jsonReply(res, 502, { error: err.message });
+			}
+
+		// ── Skills Marketplace proxy ────────────────────────────────────
+		} else if (url.pathname === "/api/skills-mp/proxy" && req.method === "GET") {
+			const proxyPath = url.searchParams.get("path") || "/";
+			const targetUrl = `https://skills.sh${proxyPath.startsWith("/") ? proxyPath : "/" + proxyPath}`;
+
+			try {
+				const proxyRes = await fetch(targetUrl, {
+					headers: {
+						"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+						"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+					},
+					redirect: "follow",
+				});
+
+				const contentType = proxyRes.headers.get("content-type") || "";
+
+				// Non-HTML resources: pass through directly
+				if (!contentType.includes("text/html")) {
+					const buffer = Buffer.from(await proxyRes.arrayBuffer());
+					res.writeHead(proxyRes.status, {
+						"Content-Type": contentType,
+						"Cache-Control": proxyRes.headers.get("cache-control") || "public, max-age=3600",
+					});
+					res.end(buffer);
+					return;
+				}
+
+				let html = await proxyRes.text();
+
+				// Rewrite relative src/href to absolute skills.sh URLs so assets load correctly
+				// (Do NOT rewrite href for navigation links — that breaks React hydration.
+				//  Navigation is handled by client-side click/history interception instead.)
+				html = html.replace(/src="\/(?!\/)/g, 'src="https://skills.sh/');
+				html = html.replace(/src='\/(?!\/)/g, "src='https://skills.sh/");
+				// Rewrite stylesheet/preload hrefs to load from skills.sh
+				html = html.replace(/href="\/_(next|static)\//g, 'href="https://skills.sh/_$1/');
+				html = html.replace(/href='\/_(next|static)\//g, "href='https://skills.sh/_$1/");
+
+				// Inject our custom script before </body>
+				const injectedScript = `
+<script>
+(function() {
+  const PROXY_BASE = '/api/skills-mp/proxy?path=';
+
+  // Fetch installed skills from lock file
+  var __installedSkills = new Set();
+  var __installedSources = new Set();
+  fetch('/api/skills-mp/installed').then(function(r){return r.json();}).then(function(d){
+    if(d&&d.installed) __installedSkills = new Set(d.installed);
+    if(d&&d.sources) __installedSources = new Set(d.sources);
+    processSkillButtons();
+  }).catch(function(){});
+
+  // Intercept fetch to route API calls to skills.sh (including full-origin URLs from Next.js)
+  const _fetch = window.fetch;
+  // e.g. fetch('http://localhost:3000/_next/data/...')
+  window.fetch = function(url, opts) {
+    if (typeof url === 'string') {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/skills-mp/')) {
+        url = 'https://skills.sh' + url;
+      } else if (url.startsWith(location.origin + '/')) {
+        var path = url.slice(location.origin.length);
+        if (!path.startsWith('/api/skills-mp/')) {
+          url = 'https://skills.sh' + path;
+        }
+      }
+    } else if (url instanceof Request) {
+      var rUrl = url.url;
+      if (rUrl.startsWith(location.origin + '/')) {
+        var rPath = rUrl.slice(location.origin.length);
+        if (!rPath.startsWith('/api/skills-mp/')) {
+          url = new Request('https://skills.sh' + rPath, url);
+        }
+      }
+    }
+    return _fetch.call(this, url, opts);
+  };
+
+  // Intercept XMLHttpRequest.open
+  const _xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    if (typeof url === 'string') {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/skills-mp/')) {
+        url = 'https://skills.sh' + url;
+      } else if (url.startsWith(location.origin + '/')) {
+        var path = url.slice(location.origin.length);
+        if (!path.startsWith('/api/skills-mp/')) {
+          url = 'https://skills.sh' + path;
+        }
+      }
+    }
+    return _xhrOpen.apply(this, [method, url].concat(args));
+  };
+
+  // Intercept history.pushState/replaceState for Next.js client-side navigation
+  var _pushState = history.pushState;
+  var _replaceState = history.replaceState;
+  function rewriteHistoryUrl(originalFn, data, title, url) {
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/skills-mp/')) {
+      url = PROXY_BASE + url;
+    }
+    return originalFn.call(history, data, title, url);
+  }
+  history.pushState = function(data, title, url) { return rewriteHistoryUrl(_pushState, data, title, url); };
+  history.replaceState = function(data, title, url) { return rewriteHistoryUrl(_replaceState, data, title, url); };
+
+  // Intercept form submissions
+  document.addEventListener('submit', function(e) {
+    var form = e.target;
+    if (!form || !form.action) return;
+    var action = form.getAttribute('action');
+    if (action && action.startsWith('/') && !action.startsWith('//') && !action.startsWith('/api/skills-mp/')) {
+      e.preventDefault();
+      var params = new URLSearchParams(new FormData(form)).toString();
+      window.location.href = PROXY_BASE + action + (params ? (action.includes('?') ? '&' : '?') + params : '');
+    }
+  }, true);
+
+  function processSkillButtons() {
+    // Find elements with npx skills add commands
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    for (const node of textNodes) {
+      const match = node.textContent && node.textContent.match(/npx\\s+skills\\s+add\\s+(\\S+)/);
+      if (!match) continue;
+
+      // Find the closest interactive parent (button, code block, pre)
+      let target = node.parentElement;
+      while (target && !['BUTTON','PRE','CODE','DIV'].includes(target.tagName)) {
+        target = target.parentElement;
+      }
+      if (!target || target.dataset.gcProcessed) continue;
+      target.dataset.gcProcessed = 'true';
+
+      const source = match[1].replace(/^https:\\/\\/github\\.com\\//, '');
+      const alreadyInstalled = __installedSources.has(source) || __installedSkills.has(source.split('/').pop());
+      const btn = document.createElement('button');
+      if (alreadyInstalled) {
+        btn.textContent = 'Installed';
+        btn.disabled = true;
+        btn.style.cssText = 'background:#1a7f37;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:default;font-size:14px;font-weight:600;margin:4px;opacity:0.85;';
+      } else {
+        btn.textContent = 'Install on GitClaw';
+        btn.style.cssText = 'background:#238636;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;margin:4px;';
+        btn.onmouseenter = function(){ btn.style.background='#2ea043'; };
+        btn.onmouseleave = function(){ btn.style.background='#238636'; };
+        btn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          btn.disabled = true;
+          btn.textContent = 'Installing...';
+          window.parent.postMessage({ type: 'install_skill', source: source }, '*');
+        };
+      }
+      target.parentElement.insertBefore(btn, target.nextSibling);
+    }
+  }
+
+  window.addEventListener('message', function(msg) {
+    if (!msg.data || msg.data.type !== 'install_success') return;
+    var btns = document.querySelectorAll('button');
+    btns.forEach(function(b) {
+      if (b.textContent === 'Installing...') {
+        b.textContent = 'Installed';
+        b.style.background = '#1a7f37';
+        b.style.cursor = 'default';
+        b.style.opacity = '0.85';
+      }
+    });
+    // Refresh installed set so future processSkillButtons calls are up to date
+    fetch('/api/skills-mp/installed').then(function(r){return r.json();}).then(function(d){
+      if(d&&d.installed) __installedSkills = new Set(d.installed);
+      if(d&&d.sources) __installedSources = new Set(d.sources);
+    }).catch(function(){});
+  });
+
+  // Intercept link clicks to route through proxy
+  document.addEventListener('click', function(e) {
+    const a = e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href) return;
+    // Already proxied
+    if (href.startsWith('/api/skills-mp/proxy')) return;
+    // Internal skills.sh links
+    if (href.startsWith('/') && !href.startsWith('//')) {
+      e.preventDefault();
+      window.location.href = PROXY_BASE + href;
+    } else if (href.startsWith('https://skills.sh/') || href.startsWith('https://skillsmp.com/')) {
+      e.preventDefault();
+      const path = new URL(href).pathname;
+      window.location.href = PROXY_BASE + path;
+    }
+  }, true);
+
+  // Run on load + observe for SPA changes
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', processSkillButtons);
+  } else {
+    processSkillButtons();
+  }
+  new MutationObserver(function() { processSkillButtons(); })
+    .observe(document.body || document.documentElement, { childList: true, subtree: true });
+})();
+</script>`;
+
+				html = html.replace(/<\/body>/i, injectedScript + "</body>");
+
+				res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+				res.end(html);
+			} catch (err: any) {
+				// Fallback if skills.sh is unreachable
+				res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+				res.end(`<!DOCTYPE html>
+<html><head><style>body{background:#0d1117;color:#c9d1d9;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;}
+a{color:#58a6ff;}</style></head>
+<body><div><h2>Skills Marketplace Unavailable</h2><p>Could not reach skills.sh: ${err.message}</p>
+<p><a href="https://skills.sh" target="_blank">Open skills.sh in a new tab</a></p></div></body></html>`);
+			}
+
+		// ── Skills Marketplace installed list ────────────────────────────
+		} else if (url.pathname === "/api/skills-mp/installed" && req.method === "GET") {
+			try {
+				const lockPath = join(agentRoot, "skills-lock.json");
+				if (existsSync(lockPath)) {
+					const lock = JSON.parse(readFileSync(lockPath, "utf-8"));
+					const skills = lock.skills || {};
+					const names = Object.keys(skills);
+					// Build a set of sources (repo slugs) that have installed skills
+					const sources = [...new Set(Object.values(skills).map((s: any) => s.source))];
+					jsonReply(res, 200, { installed: names, sources });
+				} else {
+					jsonReply(res, 200, { installed: [], sources: [] });
+				}
+			} catch (err: any) {
+				jsonReply(res, 200, { installed: [], sources: [] });
+			}
+
+		// ── Skills Marketplace install ──────────────────────────────────
+		} else if (url.pathname === "/api/skills-mp/install" && req.method === "POST") {
+			let body = "";
+			for await (const chunk of req) body += chunk;
+			try {
+				const { source } = JSON.parse(body) as { source: string };
+				if (!source) return jsonReply(res, 400, { error: "Missing source" });
+
+				// Shell out to the skills CLI — it handles all install logic
+				const cleanSource = source.replace(/^https?:\/\/github\.com\//, "");
+				const skillsDir = join(agentRoot, "skills");
+				const before = new Set(existsSync(skillsDir) ? readdirSync(skillsDir) : []);
+
+				execSync(`npx -y skills add -y ${cleanSource}`, {
+					cwd: agentRoot,
+					encoding: "utf-8",
+					timeout: 120000,
+				});
+
+				// Detect which skill directories were added (symlinked into skills/)
+				const after = existsSync(skillsDir) ? readdirSync(skillsDir) : [];
+				const added = after.filter(d => !before.has(d));
+				const skillNames = added.length ? added : [cleanSource.split("/")[1] || cleanSource];
+				console.log(dim(`[voice] Installed skill(s): ${skillNames.join(", ")} via npx skills add`));
+				jsonReply(res, 200, { ok: true, skillName: skillNames.join(", "), path: `skills/`, installed: skillNames });
+			} catch (err: any) {
+				jsonReply(res, 500, { error: err.message });
 			}
 
 		} else {

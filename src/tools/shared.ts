@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { StringEnum } from "@mariozechner/pi-ai";
+import { homedir } from "os";
 
 // ── Constants ───────────────────────────────────────────────────────────
 
@@ -106,6 +107,9 @@ export function paginateLines(
 
 /** Resolve a path relative to a sandbox repo root. */
 export function resolveSandboxPath(path: string, repoRoot: string): string {
+	if (path.startsWith("~/") || path === "~") {
+		path = homedir() + path.slice(1);
+	}
 	if (path.startsWith("/")) return path;
 	return repoRoot.endsWith("/") ? repoRoot + path : repoRoot + "/" + path;
 }

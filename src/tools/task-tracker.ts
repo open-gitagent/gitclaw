@@ -231,10 +231,18 @@ export function createTaskTrackerTool(agentDir: string, gitagentDir: string): Ag
 					}
 
 					if (allMatches.length > 0) {
-						response += "\n\nMatching skills found:";
-						for (const m of allMatches.slice(0, 5)) {
-							const conf = m.confidence !== undefined ? ` (confidence: ${m.confidence})` : "";
-							response += `\n  - ${m.name}: ${m.description}${conf} [${m.source}]`;
+						const topMatch = allMatches[0];
+						const topConf = topMatch.confidence !== undefined ? ` (confidence: ${topMatch.confidence})` : "";
+						response += `\n\n⚡ SKILL MATCH FOUND — YOU MUST USE IT:`;
+						response += `\n  → ${topMatch.name}: ${topMatch.description}${topConf} [${topMatch.source}]`;
+						response += `\n\nACTION REQUIRED: Load skills/${topMatch.name}/SKILL.md NOW and follow its instructions.`;
+						response += `\nDo NOT proceed with a manual approach — the skill handles this task.`;
+						if (allMatches.length > 1) {
+							response += `\n\nOther matching skills:`;
+							for (const m of allMatches.slice(1, 5)) {
+								const conf = m.confidence !== undefined ? ` (confidence: ${m.confidence})` : "";
+								response += `\n  - ${m.name}: ${m.description}${conf} [${m.source}]`;
+							}
 						}
 					} else {
 						response += "\n\nNo matching skills found. Solve from scratch.";

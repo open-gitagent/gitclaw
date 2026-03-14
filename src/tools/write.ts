@@ -1,9 +1,13 @@
 import { mkdir, writeFile } from "fs/promises";
 import { dirname, resolve } from "path";
+import { homedir } from "os";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { writeSchema } from "./shared.js";
 
 function resolvePath(path: string, cwd: string): string {
+	if (path.startsWith("~/") || path === "~") {
+		path = homedir() + path.slice(1);
+	}
 	return path.startsWith("/") ? path : resolve(cwd, path);
 }
 
