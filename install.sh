@@ -2,20 +2,20 @@
 set -euo pipefail
 
 # ── Colors & Styles ──────────────────────────────────────────────
-RESET="\e[0m"
-EMPTY="\e[48;2;13;13;13m"
-OUTLINE="\e[48;2;18;7;11m"
-FILL="\e[48;2;255;79;99m"
-BOLD="\e[1m"
-RED="\e[38;2;255;79;99m"
-DIM="\e[2m"
-WHITE="\e[97m"
-GRAY="\e[38;2;160;160;160m"
-LGRAY="\e[38;2;110;110;110m"
-GREEN="\e[32m"
-CYAN="\e[36m"
-YELLOW="\e[33m"
-NC="\e[0m"
+RESET=$'\e[0m'
+EMPTY=$'\e[48;2;13;13;13m'
+OUTLINE=$'\e[48;2;18;7;11m'
+FILL=$'\e[48;2;255;79;99m'
+BOLD=$'\e[1m'
+RED=$'\e[38;2;255;79;99m'
+DIM=$'\e[2m'
+WHITE=$'\e[97m'
+GRAY=$'\e[38;2;160;160;160m'
+LGRAY=$'\e[38;2;110;110;110m'
+GREEN=$'\e[32m'
+CYAN=$'\e[36m'
+YELLOW=$'\e[33m'
+NC=$'\e[0m'
 
 # ── Sprite Banner ────────────────────────────────────────────────
 rows=(
@@ -89,9 +89,16 @@ echo -e "  ${GREEN}✓${NC} node $(node -v)  ${GREEN}✓${NC} npm $(npm -v)  ${G
 echo ""
 
 # ── Install gitclaw globally ─────────────────────────────────────
-echo -e "  ${BOLD}Installing gitclaw...${NC}"
-npm install -g gitclaw@latest 2>&1 | tail -2
-echo -e "  ${GREEN}✓${NC} gitclaw installed"
+if command -v gitclaw &>/dev/null; then
+  CURRENT_VER=$(gitclaw --version 2>/dev/null || echo "unknown")
+  echo -e "  ${GREEN}✓${NC} gitclaw already installed (${CURRENT_VER})"
+  echo -e "  ${DIM}  Checking for updates...${NC}"
+  npm update -g gitclaw 2>/dev/null || true
+else
+  echo -e "  ${BOLD}Installing gitclaw...${NC}"
+  npm install -g gitclaw@latest 2>&1 | tail -2
+  echo -e "  ${GREEN}✓${NC} gitclaw installed"
+fi
 echo ""
 
 # ── Setup Mode Selection ─────────────────────────────────────────
