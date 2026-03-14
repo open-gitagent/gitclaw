@@ -1,7 +1,7 @@
 {
   "name": "gitclaw",
   "version": "0.4.0",
-  "description": "A git-native AI agent with multimodal voice, live dashboard, and skill learning",
+  "description": "A universal git-native multimodal always learning AI Agent (TinyHuman)",
   "author": "shreyaskapale",
   "license": "MIT",
   "repository": {
