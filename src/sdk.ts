@@ -110,6 +110,7 @@ export function query(options: QueryOptions): Query {
 	// These are set once the agent is loaded (async init below)
 	let _sessionId = options.sessionId ?? "";
 	let _manifest: AgentManifest | null = null;
+	let _agent: Agent | null = null;
 
 	// Accumulate streaming deltas for the current message
 	let accText = "";
@@ -284,6 +285,7 @@ export function query(options: QueryOptions): Query {
 				...modelOptions,
 			},
 		});
+		_agent = agent;
 
 		// 9. Subscribe to events and map to GCMessage
 		agent.subscribe((event: AgentEvent) => {
@@ -471,9 +473,16 @@ export function query(options: QueryOptions): Query {
 			ac.abort();
 		},
 
-		steer(_message: string) {
-			// Steering requires agent reference — for now this is a placeholder.
-			// Full steering support would require exposing the Agent instance.
+		steer(message: string) {
+			if (!_agent) {
+				throw new Error("Agent not yet loaded — cannot steer before the query starts streaming");
+			}
+			pushMsg({ type: "user", content: message });
+			_agent.steer({
+				role: "user",
+				content: message,
+				timestamp: Date.now(),
+			});
 		},
 
 		sessionId() {

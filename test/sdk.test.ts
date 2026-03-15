@@ -201,6 +201,36 @@ describe("wrapToolWithProgrammaticHooks()", () => {
 	});
 });
 
+// ── steer() ───────────────────────────────────────────────────────────
+
+describe("steer()", () => {
+	it("throws when agent is not loaded yet", () => {
+		const q = query({
+			prompt: "hello",
+			dir: "/nonexistent/path",
+		});
+
+		assert.throws(() => {
+			q.steer("focus on security instead");
+		}, /Agent not yet loaded/);
+
+		// Clean up
+		q.return();
+	});
+
+	it("steer method exists on Query object", () => {
+		const q = query({
+			prompt: "hello",
+			dir: "/nonexistent/path",
+		});
+
+		assert.equal(typeof q.steer, "function");
+
+		// Clean up
+		q.return();
+	});
+});
+
 // ── query() error handling ─────────────────────────────────────────────
 
 describe("query()", () => {
