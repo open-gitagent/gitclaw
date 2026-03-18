@@ -15,6 +15,7 @@ import { toAgentTool } from "./tool-utils.js";
 import { AuditLogger, isAuditEnabled } from "./audit.js";
 import { formatComplianceWarnings } from "./compliance.js";
 import { readFile, mkdir, writeFile, stat, access } from "fs/promises";
+import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 import { execSync } from "child_process";
 import { initLocalSession } from "./session.js";
@@ -373,6 +374,21 @@ async function main(): Promise<void> {
 		dir = await ensureRepo(dir, model);
 	} else {
 		dir = resolve(dir);
+	}
+
+	// Load .env from agent directory so API keys are available before voice init
+	const envPath = resolve(dir, ".env");
+	if (existsSync(envPath)) {
+		const envContent = readFileSync(envPath, "utf-8");
+		for (const line of envContent.split("\n")) {
+			const eq = line.indexOf("=");
+			if (eq <= 0) continue;
+			const key = line.slice(0, eq).trim();
+			const val = line.slice(eq + 1).trim();
+			if (!process.env[key]) {
+				process.env[key] = val;
+			}
+		}
 	}
 
 	// Voice mode

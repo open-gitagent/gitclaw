@@ -29,24 +29,70 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 		this.onMessage = opts.onMessage;
 		this.toolHandler = opts.toolHandler;
 
-		const model = this.config.model || "gpt-realtime";
+		const model = this.config.model || "gpt-4o-realtime-preview";
 		const url = `wss://api.openai.com/v1/realtime?model=${model}`;
 
-		return new Promise((resolve, reject) => {
-			this.ws = new WebSocket(url, {
+		// Try direct WebSocket with headers first (native Node.js / real server)
+		try {
+			await this.connectWs(url, {
 				headers: {
 					Authorization: `Bearer ${this.config.apiKey}`,
 					"OpenAI-Beta": "realtime=v1",
 				},
 			});
+			return;
+		} catch (err: any) {
+			const msg = err?.message || "";
+			// Only retry with ephemeral token if auth failed (WebContainer drops headers)
+			if (!msg.includes("authentication") && !msg.includes("401")) {
+				throw err;
+			}
+			console.log(dim("[voice] Direct auth failed, requesting ephemeral token…"));
+		}
 
-			this.ws.on("open", () => {
+		// Fallback: get an ephemeral session token via REST (fetch headers work everywhere)
+		const sessionResp = await fetch("https://api.openai.com/v1/realtime/sessions", {
+			method: "POST",
+			headers: {
+				"Authorization": `Bearer ${this.config.apiKey}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ model }),
+		});
+		if (!sessionResp.ok) {
+			const body = await sessionResp.text();
+			throw new Error(`Failed to create realtime session: ${sessionResp.status} ${body}`);
+		}
+		const session = await sessionResp.json() as { client_secret?: { value?: string } };
+		const ephemeralKey = session.client_secret?.value;
+		if (!ephemeralKey) {
+			throw new Error("No ephemeral key returned from realtime sessions endpoint");
+		}
+
+		await this.connectWs(url, {
+			headers: {
+				Authorization: `Bearer ${ephemeralKey}`,
+				"OpenAI-Beta": "realtime=v1",
+			},
+		});
+	}
+
+	private connectWs(url: string, opts: any): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const ws = new WebSocket(url, opts);
+			let settled = false;
+
+			ws.on("open", () => {
+				settled = true;
+				this.ws = ws;
 				this.sendSessionUpdate();
 				resolve();
 			});
 
-			this.ws.on("error", (err) => {
-				if (!this.ws) {
+			ws.on("error", (err) => {
+				if (!settled) {
+					settled = true;
+					ws.close();
 					reject(err);
 				} else {
 					console.error(dim(`[voice] WebSocket error: ${err.message}`));
@@ -54,11 +100,15 @@ export class OpenAIRealtimeAdapter implements MultimodalAdapter {
 				}
 			});
 
-			this.ws.on("close", () => {
+			ws.on("close", () => {
+				if (!settled) {
+					settled = true;
+					reject(new Error("WebSocket closed before open — authentication likely failed"));
+				}
 				console.log(dim("[voice] WebSocket closed"));
 			});
 
-			this.ws.on("message", (data) => {
+			ws.on("message", (data) => {
 				const event = JSON.parse(data.toString());
 				this.handleEvent(event);
 			});
