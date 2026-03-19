@@ -178,16 +178,6 @@ function summarizeArgs(args: any): string {
 		.join(", ");
 }
 
-function askQuestion(question: string): Promise<string> {
-	const rl = createInterface({ input: process.stdin, output: process.stdout });
-	return new Promise((res) => {
-		rl.question(question, (answer) => {
-			rl.close();
-			res(answer.trim());
-		});
-	});
-}
-
 function isGitRepo(dir: string): boolean {
 	try {
 		execSync("git rev-parse --is-inside-work-tree", { cwd: dir, stdio: "pipe" });
@@ -345,12 +335,6 @@ async function main(): Promise<void> {
 		});
 		dir = localSession.dir;
 		console.log(dim(`Local session: ${localSession.branch} (${localSession.dir})`));
-	} else if (dir === process.cwd() && !prompt) {
-		// No --repo: interactive prompt for dir
-		const answer = await askQuestion(green("? ") + bold("Repository path") + dim(" (. for current dir)") + green(": "));
-		if (answer) {
-			dir = resolve(answer === "." ? process.cwd() : answer);
-		}
 	}
 
 	// Create sandbox context if --sandbox flag is set
