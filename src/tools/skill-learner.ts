@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir, readdir, rm } from "fs/promises";
 import { join } from "path";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { skillLearnerSchema } from "./shared.js";
 import { loadSkillStats, isSkillFlagged } from "../learning/reinforcement.js";
@@ -85,9 +85,9 @@ async function getExistingSkillDescriptions(agentDir: string): Promise<Array<{ n
 function gitCommit(agentDir: string, files: string[], message: string): void {
 	try {
 		for (const f of files) {
-			execSync(`git add "${f}"`, { cwd: agentDir, stdio: "pipe" });
+			execFileSync("git", ["add", f], { cwd: agentDir, stdio: "pipe" });
 		}
-		execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
+		execFileSync("git", ["commit", "-m", message], {
 			cwd: agentDir,
 			stdio: "pipe",
 		});
@@ -391,7 +391,8 @@ export function createSkillLearnerTool(agentDir: string, gitagentDir: string): A
 					}
 
 					try {
-						execSync(`git add -A && git commit -m "Delete skill: ${params.skill_name.replace(/"/g, '\\"')}"`, {
+						execFileSync("git", ["add", "-A"], { cwd: agentDir, stdio: "pipe" });
+						execFileSync("git", ["commit", "-m", `Delete skill: ${params.skill_name}`], {
 							cwd: agentDir,
 							stdio: "pipe",
 						});
