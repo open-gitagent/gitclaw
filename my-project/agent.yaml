@@ -1,0 +1,10 @@
+spec_version: "0.1.0"
+name: C:\Users\Vivan Rajath\Desktop\gitclaw-lyzr\gitclaw\my-project
+version: 0.1.0
+description: Gitclaw agent for C:\Users\Vivan Rajath\Desktop\gitclaw-lyzr\gitclaw\my-project
+model:
+  preferred: "groq:llama3-70b-8192"
+  fallback: []
+tools: [cli, read, write, memory]
+runtime:
+  max_turns: 50
