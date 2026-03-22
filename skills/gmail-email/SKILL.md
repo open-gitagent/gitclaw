@@ -1,3 +1,8 @@
+---
+name: gmail-email
+description: Send emails via Gmail SMTP using App Password authentication.
+---
+
 # Gmail Email Skill
 
 Send emails via Gmail SMTP.

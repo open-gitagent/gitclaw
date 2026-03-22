@@ -1378,7 +1378,7 @@ function switchView(v){
   if(v==='integrations'&&!integrationsLoaded){loadToolkits();integrationsLoaded=true;}
   if(v==='comms'&&!commsLoaded){loadTelegramStatus();loadWhatsAppStatus();loadPhoneWebhookUrl();commsLoaded=true;}
   if(v==='skills'&&!skillsLoaded){document.getElementById('skillsFrame').src='/api/skills-mp/proxy?path=/';skillsLoaded=true;}
-  if(v==='flows'&&!flowsLoaded){loadFlowSkills();loadSavedFlows();flowsLoaded=true;}
+  if(v==='flows'){loadFlowSkills();loadSavedFlows();flowsLoaded=true;}
   if(v==='scheduler'&&!schedulerLoaded){loadSchedules();schedulerLoaded=true;}
 }
 // Skills MP install handler
@@ -1427,7 +1427,7 @@ function loadFlowSkills() {
     flowSkillsCache = d.skills || [];
     document.getElementById('flowSkillsSearch').value = '';
     renderFlowSkillsList(flowSkillsCache);
-  }).catch(function(){});
+  }).catch(function(err){ console.error('loadFlowSkills error:', err); });
   refreshFlowCommsStatus();
 }
 
@@ -1963,7 +1963,7 @@ function handleServerMessage(m){switch(m.type){
     thinkingEl.querySelector('.thinking-text').textContent+=m.text;
     conv.scrollTop=conv.scrollHeight;
     break;
-  case'files_changed':refreshFileTree();break;
+  case'files_changed':refreshFileTree();if(currentView==='flows'){loadFlowSkills();}break;
   case'error':appendConv('Error: '+escHtml(m.message),'system');break;
   case'schedule_start':
     var schEl=document.createElement('div');
