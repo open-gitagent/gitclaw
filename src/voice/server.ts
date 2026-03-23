@@ -2247,6 +2247,19 @@ ${runningContext}`;
 (function() {
   const PROXY_BASE = '/api/skills-mp/proxy?path=';
 
+  // Build a proxy URL that keeps query params as top-level params
+  // so the server can forward them (e.g. ?q=docker) to skills.sh.
+  // Without this, "/?q=docker" becomes "proxy?path=/?q=docker" and
+  // the q param is buried inside the path value — nuqs/Next.js
+  // cannot read it back from location.search, breaking search.
+  function proxyUrl(rawUrl) {
+    var qi = rawUrl.indexOf('?');
+    if (qi === -1) return PROXY_BASE + rawUrl;
+    var pathname = rawUrl.slice(0, qi);
+    var qs = rawUrl.slice(qi + 1);           // e.g. "q=docker&view=all"
+    return PROXY_BASE + encodeURIComponent(pathname) + '&' + qs;
+  }
+
   // Fetch installed skills from lock file
   var __installedSkills = new Set();
   var __installedSources = new Set();
@@ -2262,11 +2275,11 @@ ${runningContext}`;
   window.fetch = function(url, opts) {
     if (typeof url === 'string') {
       if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/skills-mp/')) {
-        url = PROXY_BASE + url;
+        url = proxyUrl(url);
       } else if (url.startsWith(location.origin + '/')) {
         var path = url.slice(location.origin.length);
         if (!path.startsWith('/api/skills-mp/')) {
-          url = PROXY_BASE + path;
+          url = proxyUrl(path);
         }
       }
     } else if (url instanceof Request) {
@@ -2274,7 +2287,7 @@ ${runningContext}`;
       if (rUrl.startsWith(location.origin + '/')) {
         var rPath = rUrl.slice(location.origin.length);
         if (!rPath.startsWith('/api/skills-mp/')) {
-          url = new Request(PROXY_BASE + rPath, url);
+          url = new Request(proxyUrl(rPath), url);
         }
       }
     }
@@ -2287,11 +2300,11 @@ ${runningContext}`;
     var args = Array.prototype.slice.call(arguments, 2);
     if (typeof url === 'string') {
       if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/skills-mp/')) {
-        url = PROXY_BASE + url;
+        url = proxyUrl(url);
       } else if (url.startsWith(location.origin + '/')) {
         var path = url.slice(location.origin.length);
         if (!path.startsWith('/api/skills-mp/')) {
-          url = PROXY_BASE + path;
+          url = proxyUrl(path);
         }
       }
     }
@@ -2303,7 +2316,7 @@ ${runningContext}`;
   var _replaceState = history.replaceState;
   function rewriteHistoryUrl(originalFn, data, title, url) {
     if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/api/skills-mp/')) {
-      url = PROXY_BASE + url;
+      url = proxyUrl(url);
     }
     return originalFn.call(history, data, title, url);
   }
@@ -2318,7 +2331,7 @@ ${runningContext}`;
     if (action && action.startsWith('/') && !action.startsWith('//') && !action.startsWith('/api/skills-mp/')) {
       e.preventDefault();
       var params = new URLSearchParams(new FormData(form)).toString();
-      window.location.href = PROXY_BASE + action + (params ? (action.includes('?') ? '&' : '?') + params : '');
+      window.location.href = proxyUrl(action + (params ? (action.includes('?') ? '&' : '?') + params : ''));
     }
   }, true);
 
@@ -2393,11 +2406,11 @@ ${runningContext}`;
     // Internal skills.sh links
     if (href.startsWith('/') && !href.startsWith('//')) {
       e.preventDefault();
-      window.location.href = PROXY_BASE + href;
+      window.location.href = proxyUrl(href);
     } else if (href.startsWith('https://skills.sh/') || href.startsWith('https://skillsmp.com/')) {
       e.preventDefault();
-      const path = new URL(href).pathname;
-      window.location.href = PROXY_BASE + path;
+      var parsed = new URL(href);
+      window.location.href = proxyUrl(parsed.pathname + parsed.search);
     }
   }, true);
 
