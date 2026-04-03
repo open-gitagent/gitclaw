@@ -194,14 +194,14 @@
   .conv-msg.assistant { color: #e6edf3; }
   .conv-msg.assistant .label { color: #3fb950; font-weight: 600; }
   .conv-msg.tool { color: #d29922; }
-  .conv-msg.agent-working { display: flex; align-items: center; gap: 10px; height: 32px; overflow: hidden; }
+  .conv-msg.agent-working { display: flex; align-items: flex-start; gap: 10px; min-height: 32px; }
   .agent-working-spinner {
     width: 18px; height: 18px; flex-shrink: 0;
     border: 2px solid rgba(255,79,99,0.2); border-top-color: #ff4f63;
     border-radius: 50%; animation: agentSpin 0.8s linear infinite;
   }
   @keyframes agentSpin { to { transform: rotate(360deg); } }
-  .agent-working-text { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-working-text { font-size: 11px; word-break: break-word; }
   .agent-working-verb { color: #8b949e; font-style: italic; animation: verbPulse 2s ease-in-out infinite; }
   .agent-working-name { color: #ff4f63; font-weight: 600; }
   .agent-working-sep { color: #e6edf3; font-weight: 600; }
@@ -1108,6 +1108,9 @@
         <button class="ctrl-btn" id="cameraBtn" onclick="toggleCamera()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
           Camera
+        </button>
+        <button class="ctrl-btn" id="flipCamBtn" onclick="flipCamera()" title="Switch front/back camera" style="flex:0;padding:10px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
         </button>
         <button class="ctrl-btn" id="screenBtn" onclick="toggleScreen()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
@@ -2282,8 +2285,10 @@ async function toggleMic(){if(micActive)stopMic();else await startMic();}
 async function startMic(){connectWS();try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){appendConv('Microphone access denied','system');return;}if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});var src=audioCtx.createMediaStreamSource(micStream);micProcessor=audioCtx.createScriptProcessor(4096,1,1);src.connect(micProcessor);micProcessor.connect(audioCtx.destination);micProcessor.onaudioprocess=function(e){if(!micActive||!ws||ws.readyState!==WebSocket.OPEN)return;var inp=e.inputBuffer.getChannelData(0),i16=new Int16Array(inp.length);for(var i=0;i<inp.length;i++)i16[i]=Math.max(-32768,Math.min(32767,Math.floor(inp[i]*32768)));sendMsg({type:'audio',audio:btoa(String.fromCharCode.apply(null,new Uint8Array(i16.buffer)))});};micActive=true;micBtn.classList.add('active');}
 function stopMic(){micActive=false;micBtn.classList.remove('active');if(micProcessor){micProcessor.disconnect();micProcessor=null;}if(micStream){micStream.getTracks().forEach(function(t){t.stop();});micStream=null;}}
 
+var cameraFacing='user';
 async function toggleCamera(){if(cameraActive)stopCamera();else await startCamera();}
-async function startCamera(){connectWS();try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});}catch(e){appendConv('Camera access denied','system');return;}cameraVideo.srcObject=cameraStream;cameraVideo.style.display='block';cameraOff.style.display='none';cameraCanvas.width=640;cameraCanvas.height=480;var ctx=cameraCanvas.getContext('2d');cameraInterval=setInterval(function(){if(!cameraActive||!ws||ws.readyState!==WebSocket.OPEN)return;ctx.drawImage(cameraVideo,0,0,640,480);var u=cameraCanvas.toDataURL('image/jpeg',0.7);sendMsg({type:'video_frame',frame:u.split(',')[1],mimeType:'image/jpeg'});},1000);cameraActive=true;cameraBtn.classList.add('active');}
+async function flipCamera(){if(!cameraActive)return;cameraFacing=cameraFacing==='user'?'environment':'user';stopCamera();await startCamera();}
+async function startCamera(){connectWS();try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:cameraFacing}});}catch(e){appendConv('Camera access denied','system');return;}cameraVideo.srcObject=cameraStream;cameraVideo.style.display='block';cameraOff.style.display='none';cameraCanvas.width=640;cameraCanvas.height=480;var ctx=cameraCanvas.getContext('2d');cameraInterval=setInterval(function(){if(!cameraActive||!ws||ws.readyState!==WebSocket.OPEN)return;ctx.drawImage(cameraVideo,0,0,640,480);var u=cameraCanvas.toDataURL('image/jpeg',0.7);sendMsg({type:'video_frame',frame:u.split(',')[1],mimeType:'image/jpeg'});},1000);cameraActive=true;cameraBtn.classList.add('active');}
 function stopCamera(){cameraActive=false;cameraBtn.classList.remove('active');if(cameraInterval){clearInterval(cameraInterval);cameraInterval=null;}if(cameraStream){cameraStream.getTracks().forEach(function(t){t.stop();});cameraStream=null;}cameraVideo.style.display='none';cameraOff.style.display='';}
 
 async function toggleScreen(){if(screenActive)stopScreen();else await startScreen();}
