@@ -183,8 +183,10 @@ if [ -d "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/agent.yaml" ]; then
   # Determine adapter from available keys
   if [ -n "${GEMINI_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
     ADAPTER_LABEL="Gemini Live"
-  else
+  elif [ -n "${OPENAI_API_KEY:-}" ]; then
     ADAPTER_LABEL="OpenAI Realtime"
+  else
+    ADAPTER_LABEL="Text Only"
   fi
 
   PORT="${PORT:-3333}"
@@ -195,10 +197,11 @@ if [ -d "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/agent.yaml" ]; then
 else
 
 # ── Setup Mode Selection ─────────────────────────────────────────
-echo -e "  ${BOLD}How would you like to set up?${NC}"
+echo -e "  ${BOLD}How would you like to run?${NC}"
 echo ""
-echo -e "    ${RED}${BOLD}1)${NC} ${BOLD}Quick Setup${NC}     ${DIM}— OpenAI voice + Claude agent, get started in 30 seconds${NC}"
-echo -e "    ${RED}${BOLD}2)${NC} ${BOLD}Advanced Setup${NC}  ${DIM}— choose voice adapter, model, project dir, integrations${NC}"
+echo -e "    ${RED}${BOLD}1)${NC} ${BOLD}Voice + Text${NC}    ${DIM}— real-time voice chat + text (requires OpenAI key)${NC}"
+echo -e "    ${RED}${BOLD}2)${NC} ${BOLD}Text Only${NC}       ${DIM}— text chat only, no voice (just Anthropic key)${NC}"
+echo -e "    ${RED}${BOLD}3)${NC} ${BOLD}Advanced Setup${NC}  ${DIM}— choose voice adapter, model, project dir, integrations${NC}"
 echo ""
 read -rp "  Choice [1]: " SETUP_MODE
 SETUP_MODE="${SETUP_MODE:-1}"
@@ -207,23 +210,35 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════
 # QUICK SETUP
 # ═══════════════════════════════════════════════════════════════════
-if [ "$SETUP_MODE" = "1" ]; then
+if [ "$SETUP_MODE" = "1" ] || [ "$SETUP_MODE" = "2" ]; then
+
+  VOICE_ENABLED=true
+  if [ "$SETUP_MODE" = "2" ]; then
+    VOICE_ENABLED=false
+  fi
 
   echo -e "  ${DIM}────────────────────────────────────────────────────${NC}"
-  echo -e "  ${RED}${BOLD}Quick Setup${NC}"
-  echo -e "  ${DIM}Voice: OpenAI Realtime  •  Agent: Claude Sonnet 4.6${NC}"
+  if [ "$VOICE_ENABLED" = true ]; then
+    echo -e "  ${RED}${BOLD}Voice + Text Setup${NC}"
+    echo -e "  ${DIM}Voice: OpenAI Realtime  •  Agent: Claude Sonnet 4.6${NC}"
+  else
+    echo -e "  ${RED}${BOLD}Text Only Setup${NC}"
+    echo -e "  ${DIM}Agent: Claude Sonnet 4.6  •  No voice, text chat via browser${NC}"
+  fi
   echo ""
 
-  # OpenAI key
-  echo -e "  ${BOLD}OpenAI API Key${NC} ${DIM}(for voice — get one at platform.openai.com)${NC}"
-  read -rsp "  Key: " OPENAI_KEY
-  echo ""
-  if [ -z "$OPENAI_KEY" ]; then
-    echo -e "  ${RED}✗ OpenAI key is required for voice mode${NC}"
-    exit 1
+  # OpenAI key (required for voice, optional for text-only)
+  if [ "$VOICE_ENABLED" = true ]; then
+    echo -e "  ${BOLD}OpenAI API Key${NC} ${DIM}(for voice — get one at platform.openai.com)${NC}"
+    read -rsp "  Key: " OPENAI_KEY
+    echo ""
+    if [ -z "$OPENAI_KEY" ]; then
+      echo -e "  ${RED}✗ OpenAI key is required for voice mode${NC}"
+      exit 1
+    fi
+    export OPENAI_API_KEY="$OPENAI_KEY"
+    echo -e "  ${GREEN}✓${NC} OPENAI_API_KEY saved"
   fi
-  export OPENAI_API_KEY="$OPENAI_KEY"
-  echo -e "  ${GREEN}✓${NC} OPENAI_API_KEY saved"
 
   # Anthropic key
   echo ""
@@ -250,7 +265,11 @@ if [ "$SETUP_MODE" = "1" ]; then
   fi
 
   ADAPTER="openai"
-  ADAPTER_LABEL="OpenAI Realtime"
+  if [ "$VOICE_ENABLED" = true ]; then
+    ADAPTER_LABEL="OpenAI Realtime"
+  else
+    ADAPTER_LABEL="Text Only"
+  fi
   MODEL="anthropic:claude-sonnet-4-6"
   PROJECT_DIR="${HOME}/assistant"
 

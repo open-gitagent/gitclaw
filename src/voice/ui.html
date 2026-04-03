@@ -985,12 +985,66 @@
 
   @keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 700px) {
+    /* ── Header ── */
+    .header { padding: 0 8px; height: 36px; min-height: 36px; }
+    .header-left { gap: 6px; flex: 1; min-width: 0; }
+    .header-left h1 { display: none; }
+    .header-right { gap: 8px; }
+    .audit-toggle span:last-child { display: none; }
+    .audit-toggle { padding: 4px 6px; }
+
+    /* ── Tabs — scrollable strip ── */
+    .view-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-shrink: 1; min-width: 0; scrollbar-width: none; }
+    .view-tabs::-webkit-scrollbar { display: none; }
+    .view-tab { padding: 3px 10px; font-size: 10px; white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Chat layout — stack vertically ── */
     .chat-view { flex-direction: column; }
-    .panel-cam { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #21262d; }
+    .panel-cam { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #21262d; padding: 10px; gap: 10px; }
     .camera-container { aspect-ratio: 16/9; }
+
+    /* ── Controls — larger touch targets ── */
+    .controls { gap: 6px; }
+    .ctrl-btn { min-height: 44px; padding: 10px 12px; font-size: 12px; }
+    .speaker-toggle { min-height: 44px; font-size: 12px; }
+
+    /* ── Vitals — compact ── */
+    .agent-vitals { font-size: 10px; }
+    .vital-value { font-size: 14px; }
+    .vital-label { font-size: 7px; }
+    .vitals-wave { height: 28px; }
+
+    /* ── Conversation ── */
+    .conversation { padding: 10px 12px; font-size: 12px; }
+
+    /* ── Input bar — full width, tappable ── */
+    .input-bar { padding: 8px 10px; gap: 6px; }
+    .input-bar input { min-height: 44px; font-size: 14px; padding: 10px 12px; }
+    .input-bar button { min-height: 44px; padding: 10px 14px; }
+
+    /* ── Chat sidebar — overlay when expanded ── */
+    .chat-sidebar { position: absolute; left: 0; top: 0; bottom: 0; z-index: 60; width: 260px; min-width: 260px; }
+    .chat-sidebar.collapsed { width: 0; min-width: 0; }
+
+    /* ── File sidebar / Files panel ── */
     .activity-bar { display: none; }
-    .file-sidebar { width: 100%; min-width: 0; max-height: 40vh; border-right: none; border-bottom: 1px solid #21262d; }
+    .file-sidebar { display: none; }
     .files-panel { position: absolute; right: 0; top: 0; bottom: 0; z-index: 50; width: 280px; min-width: 280px; }
+
+    /* ── SkillFlows — stack panels ── */
+    .flows-view { flex-direction: column; }
+    .flows-view > div { width: 100% !important; min-width: 0 !important; max-width: none !important; border-right: none !important; border-bottom: 1px solid #21262d; }
+
+    /* ── Scheduler — stack panels ── */
+    .scheduler-view { flex-direction: column; }
+    .scheduler-view > div { width: 100% !important; min-width: 0 !important; max-width: none !important; border-right: none !important; }
+
+    /* ── Comms — stack panels ── */
+    .comms-view { flex-direction: column; overflow-y: auto; }
+    .comms-view > div { width: 100% !important; min-width: 0 !important; max-width: none !important; border-right: none !important; }
+
+    /* ── Settings — already responsive via max-width ── */
+    .settings-view { padding: 12px; }
   }
 </style>
 </head>
@@ -1041,6 +1095,9 @@
     </div>
   </div>
   <div class="chat-view" id="chatView">
+    <div id="voiceWarning" style="display:none;padding:8px 14px;margin:8px 8px 0;background:rgba(210,153,34,0.12);border:1px solid rgba(210,153,34,0.3);border-radius:6px;color:#d29922;font-size:12px;">
+      Voice mode unavailable — no API key set. Use the <a href="#" onclick="switchView('settings');return false;" style="color:#58a6ff;text-decoration:underline;">Settings</a> tab to add your key. Text chat works normally.
+    </div>
     <div class="panel-cam">
       <div class="camera-container">
         <div class="camera-off" id="cameraOff">Camera off</div>
@@ -1441,6 +1498,8 @@ window.addEventListener('message',function(e){
         // Notify the iframe that install succeeded
         var frame=document.getElementById('skillsFrame');
         if(frame&&frame.contentWindow)frame.contentWindow.postMessage({type:'install_success',source:source},'*');
+        // Refresh SkillFlows so newly installed skill appears immediately
+        loadFlowSkills();
       } else {
         alert('Install failed: '+(d.error||'Unknown error'));
       }
@@ -1939,6 +1998,14 @@ function handleServerMessage(m){switch(m.type){
   case'audio_delta':playAudioDelta(m.audio);break;
   case'interrupt':flushAudio();break;
   case'transcript':
+    if(m.role==='assistant'&&m.text&&m.text.indexOf('Voice mode unavailable')===0){
+      document.getElementById('voiceWarning').style.display='block';
+      var _mic=document.getElementById('micBtn');if(_mic)_mic.style.display='none';
+      var _cam=document.getElementById('cameraBtn');if(_cam)_cam.style.display='none';
+      var _scr=document.getElementById('screenBtn');if(_scr)_scr.style.display='none';
+      var _spk=document.querySelector('.speaker-toggle');if(_spk)_spk.style.display='none';
+      break;
+    }
     if(m.role==='user'&&!m.partial){
       var isTg=m.text&&m.text.startsWith('[Telegram]');
       var isWa=m.text&&m.text.startsWith('[WhatsApp]');

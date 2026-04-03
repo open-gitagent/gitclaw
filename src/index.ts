@@ -382,17 +382,15 @@ async function main(): Promise<void> {
 
 		if (voice === "gemini") {
 			adapterBackend = "gemini-live";
-			apiKey = process.env.GEMINI_API_KEY;
+			apiKey = process.env.GEMINI_API_KEY || "";
 			if (!apiKey) {
-				console.error(red("Error: GEMINI_API_KEY is required for --voice gemini"));
-				process.exit(1);
+				console.log(dim("[voice] No GEMINI_API_KEY — voice disabled, text-only mode"));
 			}
 		} else {
 			adapterBackend = "openai-realtime";
-			apiKey = process.env.OPENAI_API_KEY;
+			apiKey = process.env.OPENAI_API_KEY || "";
 			if (!apiKey) {
-				console.error(red("Error: OPENAI_API_KEY is required for --voice mode"));
-				process.exit(1);
+				console.log(dim("[voice] No OPENAI_API_KEY — voice disabled, text-only mode"));
 			}
 		}
 

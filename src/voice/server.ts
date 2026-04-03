@@ -2592,7 +2592,7 @@ a{color:#58a6ff;}</style></head>
 				instructions,
 			},
 		};
-		const adapter = createAdapter(adapterOpts);
+		let adapter: MultimodalAdapter | null = opts.adapterConfig.apiKey ? createAdapter(adapterOpts) : null;
 		const sendToBrowser = (msg: ServerMessage) => {
 			safeSend(browserWs, JSON.stringify(msg));
 			appendMessage(opts.agentDir, activeBranch, msg);
@@ -2628,17 +2628,24 @@ a{color:#58a6ff;}</style></head>
 			}
 		};
 
-		try {
-			await adapter.connect({
-				toolHandler: createToolHandler(sendToBrowser),
-				onMessage: sendToBrowser,
-			});
-			console.log(dim(`[voice] Adapter ready (${opts.adapter})`));
-		} catch (err: any) {
-			console.error(dim(`[voice] Adapter connection failed: ${err.message}`));
-			safeSend(browserWs, JSON.stringify({ type: "error", message: `Adapter failed: ${err.message}` }));
-			browserWs.close();
-			return;
+		if (adapter) {
+			try {
+				await adapter.connect({
+					toolHandler: createToolHandler(sendToBrowser),
+					onMessage: sendToBrowser,
+				});
+				console.log(dim(`[voice] Adapter ready (${opts.adapter})`));
+			} catch (err: any) {
+				console.error(dim(`[voice] Adapter connection failed: ${err.message}`));
+				safeSend(browserWs, JSON.stringify({ type: "error", message: `Voice connection failed: ${err.message}` }));
+				adapter = null; // Fall back to text-only
+			}
+		}
+		if (!adapter) {
+			safeSend(browserWs, JSON.stringify({
+				type: "transcript", role: "assistant",
+				text: "Voice mode unavailable — no API key set. You can still chat via text.",
+			}));
 		}
 
 		// Parse browser messages into ClientMessage and forward to adapter
@@ -2700,6 +2707,19 @@ a{color:#58a6ff;}</style></head>
 							safeSend(browserWs, JSON.stringify({ type: "files_changed" }));
 						});
 					}
+
+					// Text-only mode — call agent directly when no voice adapter
+					if (!adapter) {
+						const handler = createToolHandler(sendToBrowser);
+						handler(msg.text).then((result) => {
+							safeSend(browserWs, JSON.stringify({ type: "agent_done", result }));
+							appendMessage(opts.agentDir, activeBranch, { type: "transcript", role: "assistant", text: result });
+							safeSend(browserWs, JSON.stringify({ type: "files_changed" }));
+						}).catch((err: any) => {
+							safeSend(browserWs, JSON.stringify({ type: "error", message: err.message }));
+						});
+						return;
+					}
 				} else if (msg.type === "file") {
 					// Save uploaded file to disk so the text agent can use it
 					const uploadsDir = join(agentRoot, "workspace");
@@ -2719,7 +2739,7 @@ a{color:#58a6ff;}</style></head>
 						text: `${userText} [Attached: ${safeName} → ${relPath}]`.trim(),
 					});
 				}
-				adapter.send(msg);
+				adapter?.send(msg);
 			} catch {
 				// Ignore unparseable messages
 			}
@@ -2727,7 +2747,7 @@ a{color:#58a6ff;}</style></head>
 
 		browserWs.on("close", () => {
 			console.log(dim("[voice] Browser disconnected"));
-			adapter.disconnect().catch(() => {});
+			adapter?.disconnect().catch(() => {});
 			// Summarize chat history, save mood, and write journal — track promises for graceful shutdown
 			const p = Promise.allSettled([
 				summarizeHistory(opts.agentDir, activeBranch).catch((err) => {
