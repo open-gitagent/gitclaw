@@ -15,7 +15,10 @@ export interface HooksConfig {
 	hooks: {
 		on_session_start?: HookDefinition[];
 		pre_tool_use?: HookDefinition[];
+		post_tool_failure?: HookDefinition[];
 		post_response?: HookDefinition[];
+		pre_query?: HookDefinition[];
+		file_changed?: HookDefinition[];
 		on_error?: HookDefinition[];
 	};
 }

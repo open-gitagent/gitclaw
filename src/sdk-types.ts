@@ -1,4 +1,5 @@
 import type { AgentManifest } from "./loader.js";
+import type { SessionCosts } from "./cost-tracker.js";
 
 // ── Message types ──────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ export interface GCStreamDelta {
 
 // ── Hook types ─────────────────────────────────────────────────────────
 
-export type GCHookEvent = "SessionStart" | "PreToolUse" | "PostResponse" | "OnError";
+export type GCHookEvent = "SessionStart" | "PreToolUse" | "PostToolFailure" | "PreQuery" | "PostResponse" | "FileChanged" | "OnError";
 
 export interface GCHookContext {
 	sessionId: string;
@@ -87,7 +88,10 @@ export interface GCHookResult {
 export interface GCHooks {
 	onSessionStart?: (ctx: GCHookContext) => Promise<GCHookResult> | GCHookResult;
 	preToolUse?: (ctx: GCPreToolUseContext) => Promise<GCHookResult> | GCHookResult;
+	postToolFailure?: (ctx: GCHookContext & { toolName: string; error: string }) => Promise<void> | void;
+	preQuery?: (ctx: GCHookContext) => Promise<GCHookResult> | GCHookResult;
 	postResponse?: (ctx: GCHookContext) => Promise<void> | void;
+	fileChanged?: (ctx: GCHookContext & { path: string }) => Promise<void> | void;
 	onError?: (ctx: GCHookContext & { error: string }) => Promise<void> | void;
 }
 
@@ -157,4 +161,5 @@ export interface Query extends AsyncGenerator<GCMessage, void, undefined> {
 	sessionId(): string;
 	manifest(): AgentManifest;
 	messages(): GCMessage[];
+	costs(): SessionCosts;
 }

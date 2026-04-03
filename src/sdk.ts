@@ -22,6 +22,7 @@ import type {
 	QueryOptions,
 	SandboxOptions,
 } from "./sdk-types.js";
+import { CostTracker } from "./cost-tracker.js";
 
 // ── Event channel ──────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ export function query(options: QueryOptions): Query {
 	const channel = createChannel<GCMessage>();
 	const collectedMessages: GCMessage[] = [];
 	const ac = options.abortController ?? new AbortController();
+	const costTracker = new CostTracker();
 
 	// These are set once the agent is loaded (async init below)
 	let _sessionId = options.sessionId ?? "";
@@ -358,6 +360,14 @@ export function query(options: QueryOptions): Query {
 					};
 					pushMsg(assistantMsg);
 
+					// Track costs per model
+					if (assistantMsg.usage) {
+						costTracker.add(
+							`${assistantMsg.provider}:${assistantMsg.model}`,
+							assistantMsg.usage,
+						);
+					}
+
 					// Reset accumulators
 					accText = "";
 					accThinking = "";
@@ -485,6 +495,10 @@ export function query(options: QueryOptions): Query {
 
 		messages() {
 			return [...collectedMessages];
+		},
+
+		costs() {
+			return costTracker.get();
 		},
 
 		// AsyncGenerator protocol
