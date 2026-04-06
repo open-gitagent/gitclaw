@@ -1856,7 +1856,7 @@ var statusDot=document.getElementById('statusDot'),statusText=document.getElemen
 
 function setStatus(t,s){statusText.textContent=t;statusDot.className='status-dot '+(s||'');}
 function appendConv(h,c){var d=document.createElement('div');d.className='conv-msg '+(c||'');d.innerHTML=h;conv.appendChild(d);conv.scrollTop=conv.scrollHeight;}
-function connectWS(){if(ws)return;setStatus('Connecting...','');ws=new WebSocket('ws://'+window.location.host);ws.onopen=function(){setStatus('Connected','connected');if(auditMode)loadExplorerTree();};ws.onmessage=function(e){try{handleServerMessage(JSON.parse(e.data));}catch(x){}};ws.onerror=function(){setStatus('Connection error','error');};ws.onclose=function(){ws=null;setStatus('Disconnected','');stopMic();stopCamera();stopScreen();};}
+function connectWS(){if(ws)return;setStatus('Connecting...','');ws=new WebSocket((window.location.protocol==='https:'?'wss://':'ws://')+window.location.host);ws.onopen=function(){setStatus('Connected','connected');if(auditMode)loadExplorerTree();};ws.onmessage=function(e){try{handleServerMessage(JSON.parse(e.data));}catch(x){}};ws.onerror=function(){setStatus('Connection error','error');};ws.onclose=function(){ws=null;setStatus('Disconnected','');stopMic();stopCamera();stopScreen();};}
 function sendMsg(m){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(m));}
 
 // Agent Vitals

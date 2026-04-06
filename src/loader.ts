@@ -402,12 +402,18 @@ Do NOT track trivial single-command tasks (e.g. "what time is it"). But DO check
 	}
 
 	// For custom providers not in pi-ai's env key map, ensure an API key is available.
-	// pi-ai looks up keys by provider name — unknown providers get undefined and throw.
-	// Set OPENAI_API_KEY as fallback since custom models use the openai-completions API.
-	const knownProviders = new Set(["openai", "anthropic", "google", "google-vertex", "groq", "cerebras", "xai", "openrouter", "mistral", "amazon-bedrock", "azure-openai-responses"]);
-	if (model.baseUrl && !knownProviders.has(provider) && !process.env.OPENAI_API_KEY) {
-		const fallbackKey = process.env[`${provider.toUpperCase()}_API_KEY`] || process.env.LYZR_API_KEY || "dummy";
-		process.env.OPENAI_API_KEY = fallbackKey;
+	// pi-ai calls getEnvApiKey(model.provider) which only knows built-in providers.
+	// For unknown providers using openai-completions API, set provider to "openai" so
+	// pi-ai finds OPENAI_API_KEY. The actual auth happens via custom headers on the model.
+	const knownProviders = new Set(["openai", "anthropic", "google", "google-vertex", "groq", "cerebras", "xai", "openrouter", "mistral", "amazon-bedrock", "azure-openai-responses", "huggingface", "opencode", "kimi-coding", "github-copilot"]);
+	if (model.baseUrl && !knownProviders.has(provider)) {
+		// Use provider-specific key if available, otherwise use LYZR key or dummy
+		const providerKey = process.env[`${provider.toUpperCase()}_API_KEY`] || process.env.LYZR_API_KEY;
+		if (providerKey && !process.env.OPENAI_API_KEY) {
+			process.env.OPENAI_API_KEY = providerKey;
+		}
+		// Override provider to "openai" so pi-ai resolves the API key correctly
+		(model as any).provider = "openai";
 	}
 
 	return {
