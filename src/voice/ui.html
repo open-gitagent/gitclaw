@@ -854,6 +854,51 @@
   .flows-saved-item .flow-delete:hover { opacity: 1; }
 
   /* Scheduler view */
+  /* Logs view */
+  .logs-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  .logs-view.hidden { display: none; }
+  .logs-toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 12px; background: #161b22; border-bottom: 1px solid #21262d; flex-shrink: 0;
+  }
+  .logs-filters { display: flex; gap: 6px; align-items: center; flex: 1; min-width: 0; }
+  .logs-filters select, .logs-filters input {
+    padding: 5px 8px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
+    color: #c9d1d9; font-size: 11px; font-family: inherit; outline: none;
+  }
+  .logs-filters select { min-width: 100px; }
+  .logs-filters input { flex: 1; min-width: 120px; }
+  .logs-filters select:focus, .logs-filters input:focus { border-color: #58a6ff; }
+  .logs-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .logs-actions label { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .logs-actions button {
+    padding: 4px 10px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+    color: #c9d1d9; font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+  .logs-actions button:hover { background: #30363d; }
+  .logs-output {
+    flex: 1; overflow-y: auto; padding: 0; font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; line-height: 1.6; background: #0d1117;
+  }
+  .log-entry { display: flex; gap: 8px; padding: 1px 10px; border-bottom: 1px solid #161b2200; }
+  .log-entry:hover { background: #161b22; }
+  .log-ts { color: #484f58; min-width: 80px; flex-shrink: 0; white-space: nowrap; }
+  .log-src {
+    display: inline-block; min-width: 72px; text-align: center; font-size: 10px; font-weight: 600;
+    padding: 0 6px; border-radius: 3px; flex-shrink: 0; line-height: 1.6;
+  }
+  .log-src-voice { color: #58a6ff; background: rgba(88,166,255,0.1); }
+  .log-src-telegram { color: #2188ff; background: rgba(33,136,255,0.1); }
+  .log-src-whatsapp { color: #3fb950; background: rgba(63,185,80,0.1); }
+  .log-src-triggers { color: #d29922; background: rgba(210,153,34,0.1); }
+  .log-src-sdk { color: #bc8cff; background: rgba(188,140,255,0.1); }
+  .log-src-scheduler { color: #f0883e; background: rgba(240,136,62,0.1); }
+  .log-src-system { color: #8b949e; background: rgba(139,148,158,0.1); }
+  .log-msg { flex: 1; white-space: pre-wrap; word-break: break-all; }
+  .log-msg.log-error { color: #f85149; }
+  .log-msg.log-warn { color: #d29922; }
+  .log-msg.log-info { color: #c9d1d9; }
+
   .scheduler-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
   .scheduler-view.hidden { display: none; }
   .scheduler-content { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -1043,6 +1088,10 @@
     .comms-view { flex-direction: column; overflow-y: auto; }
     .comms-view > div { width: 100% !important; min-width: 0 !important; max-width: none !important; border-right: none !important; }
 
+    /* ── Logs — stack toolbar ── */
+    .logs-toolbar { flex-direction: column; gap: 6px; }
+    .logs-filters { flex-wrap: wrap; }
+
     /* ── Settings — already responsive via max-width ── */
     .settings-view { padding: 12px; }
   }
@@ -1064,6 +1113,7 @@
       <button class="view-tab" id="tabComms" onclick="switchView('comms')">Communication</button>
       <button class="view-tab" id="tabFlows" onclick="switchView('flows')">SkillFlows</button>
       <button class="view-tab" id="tabScheduler" onclick="switchView('scheduler')">Scheduler</button>
+      <button class="view-tab" id="tabLogs" onclick="switchView('logs')">Logs</button>
       <button class="view-tab" id="tabSettings" onclick="switchView('settings')">Settings</button>
     </div>
   </div>
@@ -1413,6 +1463,34 @@
       <div id="schedulesList"></div>
     </div>
   </div>
+  <div class="logs-view hidden" id="logsView">
+    <div class="logs-toolbar">
+      <div class="logs-filters">
+        <select id="logSourceFilter" onchange="applyLogFilters()">
+          <option value="">All Sources</option>
+          <option value="voice">Voice</option>
+          <option value="telegram">Telegram</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="triggers">Triggers</option>
+          <option value="sdk">SDK</option>
+          <option value="scheduler">Scheduler</option>
+          <option value="system">System</option>
+        </select>
+        <select id="logLevelFilter" onchange="applyLogFilters()">
+          <option value="">All Levels</option>
+          <option value="info">Info</option>
+          <option value="warn">Warn</option>
+          <option value="error">Error</option>
+        </select>
+        <input id="logSearchInput" type="text" placeholder="Search logs..." oninput="applyLogFilters()">
+      </div>
+      <div class="logs-actions">
+        <label class="logs-autoscroll-label"><input type="checkbox" id="logAutoScroll" checked> Auto-scroll</label>
+        <button onclick="clearLogView()">Clear</button>
+      </div>
+    </div>
+    <div class="logs-output" id="logsOutput"></div>
+  </div>
   <div class="settings-view hidden" id="settingsView">
     <div style="max-width:560px;width:100%;margin:0 auto;">
       <h3 style="margin:0 0 16px;color:#e6edf3;font-size:16px;">Settings</h3>
@@ -1468,7 +1546,7 @@
 <script>
 var hasComposio={{HAS_COMPOSIO}};
 if(!hasComposio){document.getElementById('tabIntegrations').style.display='none';}
-let currentView='chat',filesLoaded=false,integrationsLoaded=false,commsLoaded=false,skillsLoaded=false,flowsLoaded=false,schedulerLoaded=false,settingsLoaded=false;
+let currentView='chat',filesLoaded=false,integrationsLoaded=false,commsLoaded=false,skillsLoaded=false,flowsLoaded=false,schedulerLoaded=false,logsLoaded=false,settingsLoaded=false;
 function switchView(v){
   currentView=v;
   document.getElementById('chatView').classList.toggle('hidden',v!=='chat');
@@ -1477,6 +1555,7 @@ function switchView(v){
   document.getElementById('skillsView').classList.toggle('hidden',v!=='skills');
   document.getElementById('flowsView').classList.toggle('hidden',v!=='flows');
   document.getElementById('schedulerView').classList.toggle('hidden',v!=='scheduler');
+  document.getElementById('logsView').classList.toggle('hidden',v!=='logs');
   document.getElementById('settingsView').classList.toggle('hidden',v!=='settings');
   document.getElementById('tabChat').classList.toggle('active',v==='chat');
   document.getElementById('tabIntegrations').classList.toggle('active',v==='integrations');
@@ -1484,12 +1563,14 @@ function switchView(v){
   document.getElementById('tabSkills').classList.toggle('active',v==='skills');
   document.getElementById('tabFlows').classList.toggle('active',v==='flows');
   document.getElementById('tabScheduler').classList.toggle('active',v==='scheduler');
+  document.getElementById('tabLogs').classList.toggle('active',v==='logs');
   document.getElementById('tabSettings').classList.toggle('active',v==='settings');
   if(v==='integrations'&&!integrationsLoaded){loadToolkits();integrationsLoaded=true;}
   if(v==='comms'&&!commsLoaded){loadTelegramStatus();loadWhatsAppStatus();loadPhoneWebhookUrl();commsLoaded=true;}
   if(v==='skills'&&!skillsLoaded){document.getElementById('skillsFrame').src='/api/skills-mp/proxy?path=/';skillsLoaded=true;}
   if(v==='flows'){loadFlowSkills();loadSavedFlows();flowsLoaded=true;}
   if(v==='scheduler'&&!schedulerLoaded){loadSchedules();schedulerLoaded=true;}
+  if(v==='logs'&&!logsLoaded){loadLogs();logsLoaded=true;}
   if(v==='settings'&&!settingsLoaded){loadSettings();settingsLoaded=true;}
 }
 // Skills MP install handler
@@ -2038,6 +2119,9 @@ function handleServerMessage(m){switch(m.type){
     setStatus('Connected','connected');
     if(filesLoaded)loadFileTree();
     refreshFileTree();break;
+  case'log_entry':
+    appendLogEntry(m.entry);
+    break;
   case'memory_saving':
     if(m.status==='start'){
       var msEl=document.createElement('div');msEl.className='conv-msg memory-saving';msEl.id='memory-saving-indicator';
@@ -2788,6 +2872,83 @@ var _knownModels=[
   {value:'deepseek:deepseek-chat',label:'DeepSeek Chat'},
   {value:'',label:'Custom (enter below)'}
 ];
+// ── Logs viewer ─────────────────────────────────────────────────────
+var logEntries=[];
+var logMaxId=0;
+var LOG_CLIENT_CAP=5000;
+
+function loadLogs(){
+  fetch('/api/logs').then(function(r){return r.json();}).then(function(d){
+    if(d.entries&&d.entries.length){
+      logEntries=d.entries;
+      logMaxId=d.entries[d.entries.length-1].id;
+      renderAllLogs();
+    }
+  }).catch(function(){});
+}
+
+function appendLogEntry(entry){
+  logEntries.push(entry);
+  if(entry.id>logMaxId)logMaxId=entry.id;
+  if(logEntries.length>LOG_CLIENT_CAP)logEntries=logEntries.slice(logEntries.length-LOG_CLIENT_CAP);
+  if(matchesLogFilter(entry)){
+    var el=renderLogEntry(entry);
+    var out=document.getElementById('logsOutput');
+    out.appendChild(el);
+    if(document.getElementById('logAutoScroll').checked)out.scrollTop=out.scrollHeight;
+  }
+}
+
+function renderLogEntry(entry){
+  var row=document.createElement('div');row.className='log-entry';
+  var ts=document.createElement('span');ts.className='log-ts';
+  var d=new Date(entry.ts);
+  ts.textContent=d.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+'.'+String(d.getMilliseconds()).padStart(3,'0');
+  var src=document.createElement('span');
+  src.className='log-src log-src-'+(entry.source||'system');
+  src.textContent=entry.source||'system';
+  var msg=document.createElement('span');
+  msg.className='log-msg log-'+entry.level;
+  msg.textContent=entry.message;
+  row.appendChild(ts);row.appendChild(src);row.appendChild(msg);
+  return row;
+}
+
+function matchesLogFilter(entry){
+  var sf=document.getElementById('logSourceFilter').value;
+  var lf=document.getElementById('logLevelFilter').value;
+  var q=(document.getElementById('logSearchInput').value||'').toLowerCase();
+  if(sf&&entry.source!==sf)return false;
+  if(lf&&entry.level!==lf)return false;
+  if(q&&entry.message.toLowerCase().indexOf(q)===-1)return false;
+  return true;
+}
+
+function applyLogFilters(){
+  var out=document.getElementById('logsOutput');out.innerHTML='';
+  for(var i=0;i<logEntries.length;i++){
+    if(matchesLogFilter(logEntries[i])){
+      out.appendChild(renderLogEntry(logEntries[i]));
+    }
+  }
+  if(document.getElementById('logAutoScroll').checked)out.scrollTop=out.scrollHeight;
+}
+
+function clearLogView(){
+  logEntries=[];
+  document.getElementById('logsOutput').innerHTML='';
+}
+
+function renderAllLogs(){
+  var out=document.getElementById('logsOutput');out.innerHTML='';
+  for(var i=0;i<logEntries.length;i++){
+    if(matchesLogFilter(logEntries[i])){
+      out.appendChild(renderLogEntry(logEntries[i]));
+    }
+  }
+  if(document.getElementById('logAutoScroll').checked)out.scrollTop=out.scrollHeight;
+}
+
 function loadSettings(){
   fetch('/api/settings').then(function(r){return r.json();}).then(function(d){
     var sel=document.getElementById('settingsModel');

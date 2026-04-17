@@ -22,6 +22,64 @@ import cron from "node-cron";
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
+// ── Log ring buffer for Logs UI ───────────────────────────────────────
+interface LogEntry {
+	id: number;
+	ts: string;
+	source: string;
+	level: "info" | "warn" | "error";
+	message: string;
+}
+
+class LogRingBuffer {
+	private buf: LogEntry[] = [];
+	private nextId = 1;
+	private cap: number;
+	constructor(capacity = 2000) { this.cap = capacity; }
+	push(source: string, level: "info" | "warn" | "error", message: string): LogEntry {
+		const entry: LogEntry = { id: this.nextId++, ts: new Date().toISOString(), source, level, message };
+		this.buf.push(entry);
+		if (this.buf.length > this.cap) this.buf.shift();
+		return entry;
+	}
+	all(): LogEntry[] { return this.buf.slice(); }
+	since(id: number): LogEntry[] { return this.buf.filter(e => e.id > id); }
+}
+
+const logBuffer = new LogRingBuffer(2000);
+let logBroadcast: ((entry: LogEntry) => void) | null = null;
+
+function stripAnsi(s: string): string { return s.replace(/\x1b\[\d*m/g, ""); }
+function extractSource(msg: string): { source: string; cleaned: string } {
+	const m = msg.match(/^\[(\w+(?:\/\w+)?)\]\s*/);
+	if (m) return { source: m[1].split("/")[0].toLowerCase(), cleaned: msg.slice(m[0].length) };
+	return { source: "system", cleaned: msg };
+}
+
+function installConsoleIntercept() {
+	const origLog = console.log.bind(console);
+	const origError = console.error.bind(console);
+	const origWarn = console.warn.bind(console);
+
+	function intercept(level: "info" | "warn" | "error", origFn: (...args: any[]) => void, ...args: any[]) {
+		origFn(...args);
+		try {
+			const raw = args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
+			const clean = stripAnsi(raw);
+			if (!clean.trim()) return;
+			const { source, cleaned } = extractSource(clean);
+			const entry = logBuffer.push(source, level, cleaned);
+			if (logBroadcast) logBroadcast(entry);
+		} catch { /* non-fatal */ }
+	}
+
+	console.log = (...args: any[]) => intercept("info", origLog, ...args);
+	console.error = (...args: any[]) => intercept("error", origError, ...args);
+	console.warn = (...args: any[]) => intercept("warn", origWarn, ...args);
+}
+
+installConsoleIntercept();
+
 // ── Background memory saver ────────────────────────────────────────────
 // Patterns that indicate the user is sharing personal info worth saving.
 // This runs server-side so we don't depend on the voice LLM deciding to save.
@@ -703,6 +761,9 @@ ${runningContext}`;
 			if (client.readyState === 1) client.send(payload);
 		}
 	}
+
+	// Wire log broadcast to WebSocket
+	logBroadcast = (entry) => broadcastToBrowsers({ type: "log_entry", entry } as ServerMessage);
 
 	// ── Scheduler setup ────────────────────────────────────────────────
 	const scheduleSendToBrowser = (msg: ServerMessage) => {
@@ -2351,6 +2412,18 @@ return false;
 			} catch {
 				jsonReply(res, 200, { entries: [] });
 			}
+
+		// ── Logs API ────────────────────────────────────────────────────
+		} else if (url.pathname === "/api/logs" && req.method === "GET") {
+			const sinceParam = url.searchParams.get("since");
+			const sourceFilter = url.searchParams.get("source") || "";
+			const levelFilter = url.searchParams.get("level") || "";
+			const searchFilter = (url.searchParams.get("q") || "").toLowerCase();
+			let entries = sinceParam ? logBuffer.since(parseInt(sinceParam, 10)) : logBuffer.all();
+			if (sourceFilter) entries = entries.filter(e => e.source === sourceFilter);
+			if (levelFilter) entries = entries.filter(e => e.level === levelFilter);
+			if (searchFilter) entries = entries.filter(e => e.message.toLowerCase().includes(searchFilter));
+			jsonReply(res, 200, { entries });
 
 		// ── Skills Marketplace proxy ────────────────────────────────────
 		} else if (url.pathname === "/api/skills-mp/proxy" && req.method === "GET") {
