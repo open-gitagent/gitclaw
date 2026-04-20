@@ -29,6 +29,15 @@ export const writeSchema = Type.Object({
 	createDirs: Type.Optional(Type.Boolean({ description: "Create parent directories if needed (default: true)" })),
 });
 
+export const editSchema = Type.Object({
+	path: Type.String({ description: "Path to the file to edit (relative or absolute)" }),
+	old_string: Type.String({ description: "Exact text to find and replace. Must match uniquely unless replace_all is true." }),
+	new_string: Type.String({ description: "Replacement text" }),
+	replace_all: Type.Optional(Type.Boolean({ description: "Replace every occurrence (default: false)" })),
+	regex: Type.Optional(Type.Boolean({ description: "Treat old_string as a JavaScript regular expression (default: false). When true, new_string may reference groups like $1." })),
+	flags: Type.Optional(Type.String({ description: "Regex flags (e.g. 'i', 'm', 's'). Only used when regex=true. 'g' is added automatically when replace_all is true." })),
+});
+
 export const memorySchema = Type.Object({
 	action: StringEnum(["load", "save"], { description: "Whether to load or save memory" }),
 	content: Type.Optional(Type.String({ description: "Memory content to save (required for save)" })),
