@@ -10,6 +10,7 @@ examples/debug-events.ts
 .env
 cmd
 workspace/
+my-project/
 memory/.latest-frame.jpg
 memory/.latest-screen.jpg
 .DS_Store
