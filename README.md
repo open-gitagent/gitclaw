@@ -638,7 +638,7 @@ Audit logs are written to `.gitagent/audit.jsonl` with full tool invocation trac
 
 ## Telemetry
 
-Gitclaw ships with optional OpenTelemetry instrumentation. When the SDK packages are not installed (or `GITCLAW_OTEL_ENABLED=false`), instrumentation is a no-op and runtime cost is zero.
+Gitclaw ships with built-in OpenTelemetry instrumentation. Set `OTEL_EXPORTER_OTLP_ENDPOINT` and telemetry is on; leave it unset and runtime cost is zero.
 
 Three layers of signals:
 
@@ -650,36 +650,27 @@ A root `gitclaw.agent.session` span opens at agent construction and closes on ev
 
 ### CLI usage
 
-```bash
-# Install peer deps once
-npm install \
-  @opentelemetry/sdk-node \
-  @opentelemetry/sdk-metrics \
-  @opentelemetry/resources \
-  @opentelemetry/semantic-conventions \
-  @opentelemetry/exporter-trace-otlp-http \
-  @opentelemetry/exporter-metrics-otlp-http \
-  @opentelemetry/instrumentation \
-  @opentelemetry/instrumentation-undici
+Just set the endpoint — no `--import` flag, no extra install steps:
 
-# Run gitclaw with the OTel preload
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
-  node --import ./dist/telemetry-bootstrap.js dist/index.js -p "your prompt"
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 gitclaw -p "your prompt"
 ```
+
+Telemetry is enabled automatically when the endpoint is set and disabled when it is not. To force-disable even when the endpoint is set, pass `GITCLAW_OTEL_ENABLED=false`.
 
 ### Environment variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GITCLAW_OTEL_ENABLED` | Set to `false` to skip OTel init entirely | (unset = enabled) |
-| `GITCLAW_OTEL_SERVICE_NAME` | Resource `service.name` | `gitclaw` |
-| `GITCLAW_OTEL_SERVICE_VERSION` | Resource `service.version` | gitclaw package version |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP collector base URL (e.g. `http://localhost:4318`) | (unset → exporter default) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP collector base URL (e.g. `http://localhost:4318`). When set, telemetry is auto-enabled. | (unset → telemetry off) |
+| `GITCLAW_OTEL_ENABLED` | Set to `false` to disable telemetry even when the endpoint is set | (unset = auto) |
+| `OTEL_SERVICE_NAME` | Resource `service.name` | `gitclaw` |
+| `OTEL_SERVICE_VERSION` | Resource `service.version` | (unset) |
 | `OTEL_EXPORTER_OTLP_HEADERS` | Comma-separated `k=v` pairs (e.g. `Authorization=Bearer xyz`) | (unset) |
 
 ### SDK usage
 
-For programmatic embedders, call `initTelemetry` from your bootstrap:
+For programmatic embedders, call `initTelemetry` explicitly — you control when initialisation happens:
 
 ```ts
 import { initTelemetry, shutdownTelemetry, query } from "gitclaw";
@@ -720,8 +711,7 @@ await shutdownTelemetry();
 ```bash
 docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one:latest
 
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
-  node --import ./dist/telemetry-bootstrap.js dist/index.js -p "test"
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 gitclaw -p "test"
 
 # Open http://localhost:16686 → service "gitclaw"
 ```

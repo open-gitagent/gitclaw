@@ -1,12 +1,9 @@
 // OpenTelemetry instrumentation for gitclaw.
 //
 // Design:
-//  - `@opentelemetry/api` is the only hard dependency; it is a no-op when no
-//    SDK has been registered as the global tracer/meter provider.
-//  - SDK packages (@opentelemetry/sdk-node, exporters, instrumentations, …)
-//    are optional peer deps loaded via dynamic `import()` inside
-//    `initTelemetry()`. If they are not installed or fail to load, the rest
-//    of gitclaw runs unmodified.
+//  - All OTel packages are regular dependencies and always installed.
+//  - SDK packages are loaded via dynamic `import()` inside `initTelemetry()`
+//    so the module is side-effect-free until telemetry is explicitly enabled.
 //  - Every public function wraps its body in try/catch — telemetry must never
 //    crash the agent.
 //  - Spans never carry prompt or completion content; only metadata.
@@ -31,8 +28,8 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 // ── Public types ───────────────────────────────────────────────────────
 
 export interface TelemetryOptions {
-	/** Service name reported as `service.name` resource attribute. */
-	serviceName: string;
+	/** Service name reported as `service.name` resource attribute. Falls back to `OTEL_SERVICE_NAME` env var if omitted. */
+	serviceName?: string;
 	/** Optional service version reported as `service.version`. */
 	serviceVersion?: string;
 	/** OTLP/HTTP endpoint (e.g. `http://localhost:4318`). Reads `OTEL_EXPORTER_OTLP_ENDPOINT` if omitted. */
@@ -107,13 +104,11 @@ export async function initTelemetry(opts: TelemetryOptions): Promise<void> {
 		const { OTLPTraceExporter } = traceExporterMod;
 		const { UndiciInstrumentation } = undiciInstrumentationMod;
 
-		const resourceAttrs: Record<string, any> = {
-			[ATTR_SERVICE_NAME ?? "service.name"]: opts.serviceName,
-			...(opts.resourceAttributes ?? {}),
-		};
-		if (opts.serviceVersion) {
-			resourceAttrs[ATTR_SERVICE_VERSION ?? "service.version"] = opts.serviceVersion;
-		}
+		const resourceAttrs: Record<string, any> = { ...(opts.resourceAttributes ?? {}) };
+		const serviceName = opts.serviceName ?? process.env.OTEL_SERVICE_NAME ?? "gitclaw";
+		resourceAttrs[ATTR_SERVICE_NAME ?? "service.name"] = serviceName;
+		const serviceVersion = opts.serviceVersion ?? process.env.OTEL_SERVICE_VERSION;
+		if (serviceVersion) resourceAttrs[ATTR_SERVICE_VERSION ?? "service.version"] = serviceVersion;
 
 		const base = opts.exporterEndpoint
 			? opts.exporterEndpoint.replace(/\/$/, "")

@@ -24,6 +24,7 @@ import { startVoiceServer } from "./voice/server.js";
 import { handlePluginCommand } from "./plugin-cli.js";
 import { context as otelContext } from "@opentelemetry/api";
 import {
+	initTelemetry,
 	wrapToolWithOtel,
 	startSessionSpan,
 	recordGenAiCall,
@@ -380,6 +381,11 @@ async function main(): Promise<void> {
 				process.env[key] = val;
 			}
 		}
+	}
+
+	// Auto-init telemetry after .env is loaded so OTEL_* vars set in .env are picked up.
+	if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT && process.env.GITCLAW_OTEL_ENABLED !== "false") {
+		await initTelemetry({});
 	}
 
 	// Voice mode
