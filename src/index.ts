@@ -139,7 +139,14 @@ function handleEvent(
 			break;
 		}
 		case "message_end": {
-			process.stdout.write("\n");
+			const _msgEnd = event as any;
+			if (_msgEnd.message?.role !== "user") {
+				if (_msgEnd.message?.stopReason === "error") {
+					process.stderr.write(red(`\nError: ${_msgEnd.message?.errorMessage ?? "LLM error"}\n`));
+				} else {
+					process.stdout.write("\n");
+				}
+			}
 			// Fire post_response hooks (non-blocking)
 			if (hooksConfig?.hooks.post_response) {
 				runHooks(hooksConfig.hooks.post_response, agentDir, {
@@ -384,7 +391,7 @@ async function main(): Promise<void> {
 	}
 
 	// Auto-init telemetry after .env is loaded so OTEL_* vars set in .env are picked up.
-	if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT && process.env.GITCLAW_OTEL_ENABLED !== "false") {
+	if ((process.env.OTEL_EXPORTER_OTLP_ENDPOINT || process.env.OTEL_TRACES_EXPORTER === "console") && process.env.GITCLAW_OTEL_ENABLED !== "false") {
 		await initTelemetry({});
 	}
 
@@ -816,7 +823,9 @@ process.on("SIGTERM", () => {
 	shutdownTelemetry().catch(() => {}).finally(() => process.exit(0));
 });
 
-main().catch((err) => {
-	console.error(red(`Fatal: ${err.message}`));
-	process.exit(1);
-});
+main()
+  .finally(() => shutdownTelemetry().catch(() => {}))
+  .catch((err) => {
+    console.error(red(`Fatal: ${err.message}`));
+    process.exit(1);
+  });

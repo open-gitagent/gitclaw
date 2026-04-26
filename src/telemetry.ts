@@ -91,9 +91,6 @@ export async function initTelemetry(opts: TelemetryOptions): Promise<void> {
 		const sdkNodeMod = await import("@opentelemetry/sdk-node");
 		const resourcesMod = await import("@opentelemetry/resources");
 		const semconvMod = await import("@opentelemetry/semantic-conventions");
-		const traceExporterMod = await import(
-			"@opentelemetry/exporter-trace-otlp-http"
-		);
 		const undiciInstrumentationMod = await import(
 			"@opentelemetry/instrumentation-undici"
 		);
@@ -101,7 +98,6 @@ export async function initTelemetry(opts: TelemetryOptions): Promise<void> {
 		const { NodeSDK } = sdkNodeMod;
 		const { resourceFromAttributes } = resourcesMod as any;
 		const { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } = semconvMod as any;
-		const { OTLPTraceExporter } = traceExporterMod;
 		const { UndiciInstrumentation } = undiciInstrumentationMod;
 
 		const resourceAttrs: Record<string, any> = { ...(opts.resourceAttributes ?? {}) };
@@ -114,10 +110,18 @@ export async function initTelemetry(opts: TelemetryOptions): Promise<void> {
 			? opts.exporterEndpoint.replace(/\/$/, "")
 			: undefined;
 
-		const traceExporter = new OTLPTraceExporter({
-			url: base ? `${base}/v1/traces` : undefined,
-			headers: opts.headers,
-		});
+		let traceExporter: any;
+		if (process.env.OTEL_TRACES_EXPORTER === "console") {
+			const { ConsoleSpanExporter } = await import("@opentelemetry/sdk-trace-node");
+			traceExporter = new ConsoleSpanExporter();
+		} else {
+			const traceExporterMod = await import("@opentelemetry/exporter-trace-otlp-http");
+			const { OTLPTraceExporter } = traceExporterMod;
+			traceExporter = new OTLPTraceExporter({
+				url: base ? `${base}/v1/traces` : undefined,
+				headers: opts.headers,
+			});
+		}
 
 		const sdkConfig: any = {
 			resource: resourceFromAttributes(resourceAttrs),

@@ -666,7 +666,8 @@ Telemetry is enabled automatically when the endpoint is set and disabled when it
 | `GITCLAW_OTEL_ENABLED` | Set to `false` to disable telemetry even when the endpoint is set | (unset = auto) |
 | `OTEL_SERVICE_NAME` | Resource `service.name` | `gitclaw` |
 | `OTEL_SERVICE_VERSION` | Resource `service.version` | (unset) |
-| `OTEL_EXPORTER_OTLP_HEADERS` | Comma-separated `k=v` pairs (e.g. `Authorization=Bearer xyz`) | (unset) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Comma-separated key=value pairs, no quotes (e.g. `Authorization=Bearer xyz,x-tenant=abc`) | (unset) |
+| `OTEL_TRACES_EXPORTER` | Set to `console` to print spans to stdout — no collector needed | (unset) |
 
 ### SDK usage
 
@@ -705,6 +706,14 @@ await shutdownTelemetry();
 | `gitclaw.session.cost_usd` | counter (USD) | Cumulative session cost |
 | `gen_ai.client.token.usage` | counter | Token usage by `gen_ai.system`, `gen_ai.request.model`, `gen_ai.token.type` |
 | `gen_ai.client.operation.duration` | histogram | LLM call duration |
+
+### Console quickstart (no collector)
+
+Print spans directly to stdout — useful for local debugging:
+
+```bash
+OTEL_TRACES_EXPORTER=console gitclaw -p "test"
+```
 
 ### Local Jaeger quickstart
 
