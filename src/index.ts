@@ -22,6 +22,14 @@ import { initLocalSession } from "./session.js";
 import type { LocalSession } from "./session.js";
 import { startVoiceServer } from "./voice/server.js";
 import { handlePluginCommand } from "./plugin-cli.js";
+import { context as otelContext } from "@opentelemetry/api";
+import {
+	initTelemetry,
+	wrapToolWithOtel,
+	startSessionSpan,
+	recordGenAiCall,
+	shutdownTelemetry,
+} from "./telemetry.js";
 
 // ANSI helpers
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -131,7 +139,14 @@ function handleEvent(
 			break;
 		}
 		case "message_end": {
-			process.stdout.write("\n");
+			const _msgEnd = event as any;
+			if (_msgEnd.message?.role !== "user") {
+				if (_msgEnd.message?.stopReason === "error") {
+					process.stderr.write(red(`\nError: ${_msgEnd.message?.errorMessage ?? "LLM error"}\n`));
+				} else {
+					process.stdout.write("\n");
+				}
+			}
 			// Fire post_response hooks (non-blocking)
 			if (hooksConfig?.hooks.post_response) {
 				runHooks(hooksConfig.hooks.post_response, agentDir, {
@@ -375,6 +390,11 @@ async function main(): Promise<void> {
 		}
 	}
 
+	// Auto-init telemetry after .env is loaded so OTEL_* vars set in .env are picked up.
+	if ((process.env.OTEL_EXPORTER_OTLP_ENDPOINT || process.env.OTEL_TRACES_EXPORTER === "console") && process.env.GITCLAW_OTEL_ENABLED !== "false") {
+		await initTelemetry({});
+	}
+
 	// Voice mode
 	if (voice) {
 		let adapterBackend: "openai-realtime" | "gemini-live";
@@ -519,6 +539,10 @@ async function main(): Promise<void> {
 		tools = tools.map((t) => wrapToolWithHooks(t, hooksConfig, agentDir, sessionId));
 	}
 
+	// Wrap every tool with OpenTelemetry instrumentation. No-op if telemetry
+	// isn't initialised (wrapToolWithOtel returns the tool unchanged).
+	tools = tools.map(wrapToolWithOtel);
+
 	// Build model options from manifest constraints
 	const modelOptions: Record<string, any> = {};
 	if (manifest.model.constraints) {
@@ -530,6 +554,13 @@ async function main(): Promise<void> {
 		if (c.stop_sequences !== undefined) modelOptions.stopSequences = c.stop_sequences;
 	}
 
+	// OpenTelemetry session span — covers the whole CLI lifetime.
+	const _session = startSessionSpan("gitclaw.agent.session", {
+		"gitclaw.entry": "cli",
+	});
+	let _llmCallStart = 0;
+	let _totalCostUsd = 0;
+
 	const agent = new Agent({
 		initialState: {
 			systemPrompt,
@@ -539,7 +570,27 @@ async function main(): Promise<void> {
 		},
 	});
 
-	agent.subscribe((event) => handleEvent(event, hooksConfig, agentDir, sessionId, auditLogger));
+	agent.subscribe((event) => {
+		// Closure-capture _llmCallStart since handleEvent is module-scope.
+		if (event.type === "message_update" && _llmCallStart === 0) {
+			_llmCallStart = Date.now();
+		}
+		if (event.type === "message_end") {
+			const raw = (event as any).message;
+			if (raw && raw.role === "assistant") {
+				try {
+					const durationMs =
+						_llmCallStart > 0 ? Date.now() - _llmCallStart : 0;
+					recordGenAiCall(raw, { durationMs });
+				} catch {
+					/* never let telemetry break the agent */
+				}
+				_totalCostUsd += Number(raw.usage?.cost?.total ?? 0) || 0;
+				_llmCallStart = 0;
+			}
+		}
+		handleEvent(event, hooksConfig, agentDir, sessionId, auditLogger);
+	});
 
 	console.log(bold(`${manifest.name} v${manifest.version}`));
 	console.log(dim(`Model: ${loaded.model.provider}:${loaded.model.id}`));
@@ -562,7 +613,7 @@ async function main(): Promise<void> {
 	// Single-shot mode
 	if (prompt) {
 		try {
-			await agent.prompt(prompt);
+			await otelContext.with(_session.ctx, () => agent.prompt(prompt));
 		} catch (err: any) {
 			auditLogger?.logError(err.message).catch(() => {});
 			// Fire on_error hooks
@@ -582,6 +633,11 @@ async function main(): Promise<void> {
 			if (sandboxCtx) {
 				console.log(dim("Stopping sandbox..."));
 				await sandboxCtx.gitMachine.stop();
+			}
+			try {
+				_session.end({ "gitclaw.cost_usd": _totalCostUsd });
+			} catch {
+				/* ignore */
 			}
 		}
 		return;
@@ -609,6 +665,11 @@ async function main(): Promise<void> {
 					localSession.finalize();
 				}
 				await stopSandbox();
+				try {
+					_session.end({ "gitclaw.cost_usd": _totalCostUsd });
+				} catch {
+					/* ignore */
+				}
 				process.exit(0);
 			}
 
@@ -711,7 +772,7 @@ async function main(): Promise<void> {
 			}
 
 			try {
-				await agent.prompt(promptText);
+				await otelContext.with(_session.ctx, () => agent.prompt(promptText));
 			} catch (err: any) {
 				console.error(red(`Error: ${err.message}`));
 				auditLogger?.logError(err.message).catch(() => {});
@@ -747,6 +808,9 @@ async function main(): Promise<void> {
 			if (localSession) {
 				try { localSession.finalize(); } catch { /* best-effort */ }
 			}
+			try {
+				_session.end({ "gitclaw.cost_usd": _totalCostUsd });
+			} catch { /* ignore */ }
 			stopSandbox().finally(() => process.exit(0));
 		}
 	});
@@ -754,7 +818,14 @@ async function main(): Promise<void> {
 	ask();
 }
 
-main().catch((err) => {
-	console.error(red(`Fatal: ${err.message}`));
-	process.exit(1);
+// Flush OpenTelemetry exporters on SIGTERM. No-op when telemetry is disabled.
+process.on("SIGTERM", () => {
+	shutdownTelemetry().catch(() => {}).finally(() => process.exit(0));
 });
+
+main()
+  .finally(() => shutdownTelemetry().catch(() => {}))
+  .catch((err) => {
+    console.error(red(`Fatal: ${err.message}`));
+    process.exit(1);
+  });

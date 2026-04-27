@@ -585,7 +585,7 @@ my-plugin/
 
 ## Multi-Model Support
 
-Gitclaw works with any LLM provider supported by [pi-ai](https://github.com/nicepkg/pi-ai):
+Gitclaw works with any LLM provider supported by [pi-ai](https://github.com/badlogic/pi-mono/tree/main/packages/ai):
 
 ```yaml
 # agent.yaml
@@ -635,6 +635,95 @@ compliance:
 ```
 
 Audit logs are written to `.gitagent/audit.jsonl` with full tool invocation traces.
+
+## Telemetry
+
+Gitclaw ships with built-in OpenTelemetry instrumentation. Set `OTEL_EXPORTER_OTLP_ENDPOINT` and telemetry is on; leave it unset and runtime cost is zero.
+
+Three layers of signals:
+
+1. **HTTP-level** — `@opentelemetry/instrumentation-undici` auto-patches `fetch`/`undici`, so every LLM provider call (Anthropic, OpenAI, Google, …) gets a client span with URL, status code, and timing.
+2. **`gen_ai.chat` spans** — emitted on every assistant `message_end`. Carry `gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.finish_reasons`, and `gitclaw.cost_usd`. Span/metric content never contains the prompt or completion text.
+3. **`gitclaw.tool.execute` spans** — wrap every tool call with `tool.name`, `tool.call_id`, `tool.status` (`ok`/`error`), and `tool.error_message` on failure.
+
+A root `gitclaw.agent.session` span opens at agent construction and closes on every exit path (success, hook-block, SIGINT, error).
+
+### CLI usage
+
+Just set the endpoint — no `--import` flag, no extra install steps:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 gitclaw -p "your prompt"
+```
+
+Telemetry is enabled automatically when the endpoint is set and disabled when it is not. To force-disable even when the endpoint is set, pass `GITCLAW_OTEL_ENABLED=false`.
+
+### Environment variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP collector base URL (e.g. `http://localhost:4318`). When set, telemetry is auto-enabled. | (unset → telemetry off) |
+| `GITCLAW_OTEL_ENABLED` | Set to `false` to disable telemetry even when the endpoint is set | (unset = auto) |
+| `OTEL_SERVICE_NAME` | Resource `service.name` | `gitclaw` |
+| `OTEL_SERVICE_VERSION` | Resource `service.version` | (unset) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Comma-separated key=value pairs, no quotes (e.g. `Authorization=Bearer xyz,x-tenant=abc`) | (unset) |
+| `OTEL_TRACES_EXPORTER` | Set to `console` to print spans to stdout — no collector needed | (unset) |
+
+### SDK usage
+
+For programmatic embedders, call `initTelemetry` explicitly — you control when initialisation happens:
+
+```ts
+import { initTelemetry, shutdownTelemetry, query } from "gitclaw";
+
+await initTelemetry({ serviceName: "my-app" });
+
+for await (const msg of query({ prompt: "hello", model: "anthropic:claude-4-6-sonnet-latest" })) {
+  // …
+}
+
+await shutdownTelemetry();
+```
+
+`OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS` are read automatically by the OTLP exporter when not supplied programmatically. Pass `exporterEndpoint` / `headers` only when you need to override env-based config in code.
+
+### Emitted spans
+
+| Name | Kind | Key attributes |
+|------|------|----------------|
+| `gitclaw.agent.session` | INTERNAL | `gitclaw.entry` (`sdk` / `cli`), `gitclaw.cost_usd`, `gitclaw.session.duration_ms` |
+| `gitclaw.tool.execute` | INTERNAL | `tool.name`, `tool.call_id`, `tool.status`, `tool.error_message` |
+| `gen_ai.chat` | CLIENT | `gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.finish_reasons`, `gitclaw.cost_usd` |
+| `HTTP …` | CLIENT | URL, status code, duration (auto from `instrumentation-undici`) |
+
+### Emitted metrics
+
+| Name | Type | Description |
+|------|------|-------------|
+| `gitclaw.tool.calls` | counter | Number of tool executions, labelled by `tool.name` |
+| `gitclaw.tool.duration_ms` | histogram | Tool execution duration |
+| `gitclaw.session.duration_ms` | histogram | Session duration |
+| `gitclaw.session.cost_usd` | counter (USD) | Cumulative session cost |
+| `gen_ai.client.token.usage` | counter | Token usage by `gen_ai.system`, `gen_ai.request.model`, `gen_ai.token.type` |
+| `gen_ai.client.operation.duration` | histogram | LLM call duration |
+
+### Console quickstart (no collector)
+
+Print spans directly to stdout — useful for local debugging:
+
+```bash
+OTEL_TRACES_EXPORTER=console gitclaw -p "test"
+```
+
+### Local Jaeger quickstart
+
+```bash
+docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one:latest
+
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 gitclaw -p "test"
+
+# Open http://localhost:16686 → service "gitclaw"
+```
 
 ## Contributing
 
