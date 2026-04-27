@@ -732,3 +732,69 @@ Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for g
 ## License
 
 This project is licensed under the [MIT License](./LICENSE).
+
+## FAQ
+
+### General
+
+**What is Gitclaw?**
+Gitclaw is a universal git-native multimodal AI Agent where your agent lives inside a git repository. Identity, rules, memory, tools, and skills are all version-controlled files — making agents forkable, branchable, and auditable.
+
+**How do I install Gitclaw?**
+```bash
+# One-command install
+bash <(curl -fsSL "https://raw.githubusercontent.com/open-gitagent/gitclaw/main/install.sh")
+
+# Or manually
+npm install -g gitclaw
+```
+
+**What are the requirements?**
+Node.js 18+, npm, and git.
+
+### Agent Architecture
+
+**What does "agents as repos" mean?**
+Every Gitclaw agent is a git repository containing:
+- `agent.yaml` — model, tools, runtime config
+- `SOUL.md` — personality and identity
+- `RULES.md` — behavioral constraints
+- `memory/` — git-committed memory with full history
+- `tools/` — declarative YAML tool definitions
+- `skills/` — composable skill modules
+- `hooks/` — lifecycle hooks
+
+This means you can fork an agent, branch a personality, `git log` your agent memory, and diff its rules.
+
+**How is memory managed?**
+Memory is stored as git-committed files in the `memory/` directory, providing full version history and auditability.
+
+### Development
+
+**How do I create custom tools?**
+Define tools as YAML files in the `tools/` directory. See the [Tools](#tools) section for the declarative format.
+
+**Can I use local LLMs?**
+Yes, Gitclaw supports any LLM provider configured in `agent.yaml`, including local models via Ollama or other local inference servers.
+
+**How do skills work?**
+Skills are composable modules in the `skills/` directory that extend agent capabilities. They can be shared across agents via git.
+
+### Troubleshooting
+
+**Agent fails to start**
+- Verify your API key is set: `export OPENAI_API_KEY="sk-..."`
+- Check Node.js version: `node --version` (requires 18+)
+- Review agent.yaml for syntax errors
+
+**Memory not persisting**
+Ensure you are in a git repository and have committed your changes:
+```bash
+git add memory/
+git commit -m "save agent memory"
+```
+
+**Where can I get help?**
+- [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines
+- [GitHub Issues](https://github.com/open-gitagent/gitagent/issues) for bug reports and feature requests
+
